@@ -1,291 +1,1374 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Tree of Thoughts</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
-<style>
-/* Layout: a sticky section bar over one centered stage (max 1360px). One section ("scene") shows at a time, like a slide; each scene is built from a few panels on wrapping grids. */
-:root{
-  --bg:#F1F3F6; --surface:#FFFFFF; --surface-2:#E8ECF2; --ink:#111827; --ink-2:#434E62; --muted:#5F6A7E; --rule:#D4DAE3; --grid:#E3E7EE;
-  --accent:#2A50E0; --accent-ink:#FFFFFF; --accent-soft:#E3E9FC; --accent-line:#9DB0F2; --bar-emph:#2A50E0; --bar:#A7B1C1;
-  --path:#C4430D; --path-soft:#FBE8DD;
-  --sure:#1C7549; --sure-soft:#DCF0E4; --likely:#8A5A00; --likely-soft:#F6EBD2; --impossible:#B3372B; --impossible-soft:#F7E0DC;
-  --shadow:0 1px 2px rgba(17,24,39,.05),0 6px 18px rgba(17,24,39,.05);
-  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
-  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  --zoom:1;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0C1118; --surface:#141B25; --surface-2:#1C2531; --ink:#E8EDF4; --ink-2:#B7C1CF; --muted:#8C98AA; --rule:#2A3443; --grid:#222B38;
-    --accent:#7F9CFF; --accent-ink:#0C1118; --accent-soft:#1B2645; --accent-line:#3B4F8F; --bar-emph:#6585F2; --bar:#56627A;
-    --path:#FF8A50; --path-soft:#3A2216;
-    --sure:#57C994; --sure-soft:#15301F; --likely:#E5AE48; --likely-soft:#33270F; --impossible:#F2786C; --impossible-soft:#3A1A17;
-    --shadow:none; color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0C1118; --surface:#141B25; --surface-2:#1C2531; --ink:#E8EDF4; --ink-2:#B7C1CF; --muted:#8C98AA; --rule:#2A3443; --grid:#222B38;
-  --accent:#7F9CFF; --accent-ink:#0C1118; --accent-soft:#1B2645; --accent-line:#3B4F8F; --bar-emph:#6585F2; --bar:#56627A;
-  --path:#FF8A50; --path-soft:#3A2216;
-  --sure:#57C994; --sure-soft:#15301F; --likely:#E5AE48; --likely-soft:#33270F; --impossible:#F2786C; --impossible-soft:#3A1A17;
-  --shadow:none; color-scheme:dark;
-}
-html{font-size:calc(16px * var(--zoom))}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1rem;line-height:1.5;-webkit-font-smoothing:antialiased}
-*,*::before,*::after{box-sizing:border-box}
-h1,h2,h3,h4{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
-p{margin:0}
-button{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.mono,code,kbd{font-family:var(--f-mono)}
-kbd{font-size:.78em;border:1px solid var(--rule);border-bottom-width:2px;border-radius:4px;padding:0 .3em;background:var(--surface)}
-var{font-style:italic;font-family:var(--f-body)}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <style>
+    :root {
+      color-scheme: light
+    }
 
-/* ---------- Top bar ---------- */
-.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg);border-bottom:1px solid var(--rule)}
-.topbar-inner{max-width:1360px;margin:0 auto;padding:.55rem 1.25rem;display:flex;gap:1rem;align-items:center}
-.brand{display:flex;align-items:center;gap:.5rem;font-family:var(--f-display);font-weight:700;font-size:1.02rem;white-space:nowrap}
-.brand svg{width:1.3rem;height:1.3rem;flex:none}
-.tabs{display:flex;gap:.15rem;overflow-x:auto;flex:1;min-width:0;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{border:0;background:transparent;color:var(--ink-2);padding:.38rem .6rem;border-radius:6px;white-space:nowrap;cursor:pointer;font-size:.84rem}
-.tab:hover{background:var(--surface-2)}
-.tab .n{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);margin-right:.35rem}
-.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
-.tab[aria-selected="true"] .n{color:inherit;opacity:.7}
-.zoom{display:flex;align-items:center;gap:.15rem;font-size:.75rem;color:var(--muted);flex:none}
-.zoom button{border:1px solid var(--rule);background:var(--surface);border-radius:5px;padding:.15rem .4rem;cursor:pointer;font-size:.75rem}
-.zoom span{min-width:2.6rem;text-align:center;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+    body {
+      margin: 0
+    }
 
-/* ---------- Stage ---------- */
-main{max-width:1360px;margin:0 auto;padding-inline:1.25rem;padding-block:1.6rem 2.5rem}
-.scene{display:flex;flex-direction:column;gap:1.25rem;animation:enter .35s ease both}
-@keyframes enter{from{transform:translateY(6px)}to{transform:none}}
-.scene-head{display:flex;flex-direction:column;gap:.45rem;max-width:62rem}
-.eyebrow{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-h2{font-size:2.05rem;font-weight:700;line-height:1.12}
-h3{font-size:1.08rem;font-weight:700;line-height:1.25}
-h4{font-size:.8rem;font-family:var(--f-mono);font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.lede{font-size:1.06rem;color:var(--ink-2);max-width:65ch}
-.note{font-size:.84rem;color:var(--muted);max-width:70ch}
-.panel{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:1.1rem 1.2rem;box-shadow:var(--shadow);min-width:0}
-.scene-foot{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:1rem;margin-top:.5rem}
-.scene-foot button{border:0;background:none;cursor:pointer;color:var(--ink-2);font-size:.9rem;padding:.3rem 0;text-align:left}
-.scene-foot button:hover{color:var(--accent)}
-.scene-foot .next{text-align:right;margin-left:auto}
-.scene-foot small{display:block;font-family:var(--f-mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.keyhint{font-size:.78rem;color:var(--muted);align-self:center}
+    img {
+      max-width: 100%
+    }
 
-.btn{border:1px solid var(--rule);background:var(--surface);border-radius:7px;padding:.45rem .8rem;cursor:pointer;font-size:.88rem;font-weight:500;white-space:nowrap}
-.btn:hover{border-color:var(--ink-2)}
-.btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn-primary:hover{filter:brightness(1.08);border-color:var(--accent)}
-.btn:disabled{opacity:.45;cursor:default}
-.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden;background:var(--surface)}
-.seg button{border:0;background:none;padding:.4rem .7rem;cursor:pointer;font-size:.86rem;border-right:1px solid var(--rule)}
-.seg button:last-child{border-right:0}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.switch{display:inline-flex;align-items:center;gap:.45rem;font-size:.86rem;color:var(--ink-2);cursor:pointer}
-.switch input{accent-color:var(--accent);width:1rem;height:1rem}
+    [hidden] {
+      display: none !important
+    }
+  </style>
+  <title>Tree of Thoughts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+  <style>
+    /* Layout: a sticky section bar over one centered stage (max 1360px). One section ("scene") shows at a time, like a slide; each scene is built from a few panels on wrapping grids. */
+    :root {
+      --bg: #F1F3F6;
+      --surface: #FFFFFF;
+      --surface-2: #E8ECF2;
+      --ink: #111827;
+      --ink-2: #434E62;
+      --muted: #5F6A7E;
+      --rule: #D4DAE3;
+      --grid: #E3E7EE;
+      --accent: #2A50E0;
+      --accent-ink: #FFFFFF;
+      --accent-soft: #E3E9FC;
+      --accent-line: #9DB0F2;
+      --bar-emph: #2A50E0;
+      --bar: #A7B1C1;
+      --path: #C4430D;
+      --path-soft: #FBE8DD;
+      --sure: #1C7549;
+      --sure-soft: #DCF0E4;
+      --likely: #8A5A00;
+      --likely-soft: #F6EBD2;
+      --impossible: #B3372B;
+      --impossible-soft: #F7E0DC;
+      --shadow: 0 1px 2px rgba(17, 24, 39, .05), 0 6px 18px rgba(17, 24, 39, .05);
+      --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --zoom: 1;
+    }
 
-/* verdict pills */
-.pill{display:inline-grid;place-items:center;font-family:var(--f-mono);font-size:.64rem;font-weight:600;min-width:1.15rem;height:1.15rem;border-radius:3px;padding:0 .2rem}
-.pill.sure{background:var(--sure-soft);color:var(--sure)}
-.pill.likely,.pill.maybe{background:var(--likely-soft);color:var(--likely)}
-.pill.impossible{background:var(--impossible-soft);color:var(--impossible)}
-.pill.wide{padding:0 .4rem;font-size:.7rem;height:1.3rem}
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0C1118;
+        --surface: #141B25;
+        --surface-2: #1C2531;
+        --ink: #E8EDF4;
+        --ink-2: #B7C1CF;
+        --muted: #8C98AA;
+        --rule: #2A3443;
+        --grid: #222B38;
+        --accent: #7F9CFF;
+        --accent-ink: #0C1118;
+        --accent-soft: #1B2645;
+        --accent-line: #3B4F8F;
+        --bar-emph: #6585F2;
+        --bar: #56627A;
+        --path: #FF8A50;
+        --path-soft: #3A2216;
+        --sure: #57C994;
+        --sure-soft: #15301F;
+        --likely: #E5AE48;
+        --likely-soft: #33270F;
+        --impossible: #F2786C;
+        --impossible-soft: #3A1A17;
+        --shadow: none;
+        color-scheme: dark;
+      }
+    }
 
-/* ---------- 4. Game of 24 ---------- */
-.g24-head{display:flex;gap:1.5rem;justify-content:space-between;align-items:flex-end;max-width:none;flex-wrap:wrap}
-.g24-head>div{display:flex;flex-direction:column;gap:.45rem;max-width:58rem}
-.sim-chip{font-size:.8rem;color:var(--ink-2);background:var(--likely-soft);border-radius:8px;padding:.55rem .75rem;max-width:24rem}
-.sim-chip b{color:var(--likely)}
-.g24-bar{display:flex;flex-wrap:wrap;gap:.9rem 1.6rem;align-items:flex-end;padding:.85rem 1rem}
-.ctl{display:flex;flex-direction:column;gap:.35rem;min-width:0}
-.ctl>.seg,.ctl>.btn{align-self:flex-start}
-.ctl-label{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.ctl-row{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
-.chip{border:1px solid var(--rule);background:var(--surface);border-radius:999px;padding:.3rem .65rem;font-family:var(--f-mono);font-size:.8rem;cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-.custom{display:flex;gap:.35rem}
-.custom input{font-family:var(--f-mono);font-size:.82rem;width:8.5rem;border:1px solid var(--rule);border-radius:7px;padding:.35rem .5rem;background:var(--surface);color:var(--ink)}
-.ctl-play{margin-left:auto;flex-direction:row;gap:.45rem;align-items:center}
-.narr{font-size:1.02rem;color:var(--ink-2);background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:.75rem 1rem;min-height:3.3rem;display:flex;gap:.75rem;align-items:center}
-.narr b{color:var(--ink)}
-.narr .ph{font-family:var(--f-mono);font-size:.72rem;background:var(--ink);color:var(--bg);border-radius:4px;padding:.15rem .45rem;white-space:nowrap;flex:none}
-.narr .ok{color:var(--sure);font-weight:600}
-.narr .bad{color:var(--impossible);font-weight:600}
-.g24-main{display:grid;grid-template-columns:minmax(0,1fr) 23rem;gap:.9rem;align-items:start}
-.tree-wrap{overflow-x:auto;min-width:0}
-.tree{display:grid;grid-template-columns:repeat(3,minmax(12.5rem,1fr)) minmax(11rem,.85fr);gap:.6rem;min-width:0}
-.col{background:var(--surface);border:1px solid var(--rule);border-radius:10px;display:flex;flex-direction:column;min-width:0}
-.col-head{padding:.6rem .75rem .5rem;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:.1rem}
-.col-head .ct{display:flex;justify-content:space-between;gap:.5rem;align-items:baseline}
-.col-head h3{font-size:.95rem}
-.col-head .cnt{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);white-space:nowrap}
-.col-head .sub{font-size:.76rem;color:var(--muted)}
-.col.live{border-color:var(--ink)}
-.col-body{max-height:31rem;overflow-y:auto;padding:.35rem;display:flex;flex-direction:column;gap:2px}
-.ghost{font-size:.84rem;color:var(--muted);padding:1rem .6rem;text-align:center;border:1px dashed var(--rule);border-radius:8px;margin:.3rem}
-.grp-head{font-size:.72rem;color:var(--muted);padding:.45rem .4rem .15rem;display:flex;gap:.35rem;align-items:center;font-family:var(--f-mono)}
-.grp-head:first-child{padding-top:.15rem}
-.grp-more{font-size:.72rem;color:var(--muted);padding:.1rem .45rem .3rem 2rem;font-family:var(--f-mono)}
-.row{display:grid;grid-template-columns:1.25rem minmax(0,1fr) auto;column-gap:.4rem;align-items:center;padding:.28rem .4rem;border-radius:6px;cursor:pointer;border:1.5px solid transparent;width:100%;text-align:left;background:none;animation:pop .3s ease both;animation-delay:calc(var(--i,0) * 22ms)}
-@keyframes pop{from{opacity:.2;transform:translateX(-4px)}to{opacity:1;transform:none}}
-.row:hover{background:var(--surface-2)}
-.row .eq{font-family:var(--f-mono);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .lf{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);grid-column:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .vals{grid-row:1 / span 2;grid-column:3;display:flex;flex-direction:column;align-items:flex-end;gap:.12rem}
-.row .pills{display:flex;gap:2px}
-.row .score{font-family:var(--f-mono);font-size:.7rem;font-variant-numeric:tabular-nums;color:var(--ink-2)}
-.row .rk{grid-row:1 / span 2}
-.row.kept{background:var(--accent-soft);border-color:var(--accent-line)}
-.row.pruned{opacity:.42}
-.row.pruned .eq{text-decoration:line-through}
-.row.onpath{border-color:var(--path);background:var(--path-soft)}
-.row.sel{outline:2px solid var(--ink);outline-offset:-1px}
-.rank{width:1.2rem;height:1.2rem;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-family:var(--f-mono);font-size:.66rem;font-weight:600;display:inline-grid;place-items:center;flex:none}
-.rank.path{background:var(--path)}
-.out-card{padding:.9rem;display:flex;flex-direction:column;gap:.6rem}
-.out-big{font-family:var(--f-mono);font-size:2.2rem;font-weight:600;line-height:1}
-.out-big.ok{color:var(--sure)}
-.out-big.bad{color:var(--impossible)}
-.out-eq{font-family:var(--f-mono);font-size:.9rem;background:var(--surface-2);padding:.45rem .55rem;border-radius:6px;word-break:break-word}
-.out-path{margin:0;padding-left:1.1rem;font-family:var(--f-mono);font-size:.78rem;color:var(--ink-2)}
-.out-meta{font-size:.76rem;color:var(--muted);border-top:1px solid var(--rule);padding-top:.5rem}
-.side{padding:0;display:flex;flex-direction:column;max-height:42rem}
-.side-tabs{display:flex;border-bottom:1px solid var(--rule)}
-.side-tabs button{flex:1;border:0;background:none;padding:.65rem .5rem;cursor:pointer;font-size:.86rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
-.side-tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
-.side-pane{padding:.9rem 1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem}
-.algo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.2rem}
-.algo li{border-radius:6px;padding:.4rem .5rem;display:flex;flex-direction:column;gap:.1rem;transition:background .25s}
-.algo li code{font-size:.8rem;white-space:nowrap;overflow-x:auto}
-.algo li span{font-size:.78rem;color:var(--muted)}
-.algo li.ind{margin-left:1rem}
-.algo li.on{background:var(--accent-soft)}
-.algo li.on code{color:var(--accent);font-weight:600}
-.algo li.on span{color:var(--ink-2)}
-.algo-state{font-family:var(--f-mono);font-size:.78rem;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:.4rem .55rem}
-.legend-v{display:flex;flex-direction:column;gap:.3rem;font-size:.8rem;color:var(--ink-2)}
-.legend-v div{display:flex;gap:.45rem;align-items:center}
-.insp h4{margin-bottom:.35rem}
-.insp-sec{display:flex;flex-direction:column;gap:.35rem}
-.prompt{font-family:var(--f-mono);font-size:.74rem;background:var(--surface-2);border-radius:6px;padding:.55rem .6rem;white-space:pre-wrap;word-break:break-word;color:var(--ink-2);margin:0}
-.prompt b{color:var(--ink);font-weight:600}
-.reply{font-family:var(--f-mono);font-size:.76rem;border:1px solid var(--rule);border-radius:6px;padding:.5rem .6rem;display:flex;flex-direction:column;gap:.3rem}
-.reply .ln{display:flex;gap:.45rem;align-items:flex-start;justify-content:space-between}
-.reply .ln.hi{color:var(--accent);font-weight:600}
-.truth{font-size:.8rem;border-radius:6px;padding:.45rem .6rem;background:var(--surface-2);color:var(--ink-2)}
-.truth.warn{background:var(--likely-soft);color:var(--ink)}
-.pathlist{margin:0;padding-left:1.1rem;font-family:var(--f-mono);font-size:.78rem}
-.pathlist li.cur{color:var(--accent);font-weight:600}
-.g24-opts{display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center}
-.fm{display:flex;flex-wrap:wrap;gap:.3rem;margin:.6rem 0}
-.fm span{font-family:var(--f-mono);font-size:.72rem;border-radius:4px;padding:.15rem .35rem;background:var(--surface-2);color:var(--muted)}
-.fm span.alive{background:var(--sure-soft);color:var(--sure);font-weight:600}
-.fm-legend{display:flex;gap:1rem;font-size:.76rem;color:var(--muted);flex-wrap:wrap}
-.fm-legend i{display:inline-block;width:.7rem;height:.7rem;border-radius:2px;margin-right:.3rem;vertical-align:-1px}
-.chain{list-style:none;margin:.6rem 0;padding:0;display:flex;flex-direction:column;gap:.3rem}
-.chain li{display:flex;gap:.6rem;align-items:center;font-family:var(--f-mono);font-size:.8rem;flex-wrap:wrap}
-.chain .st{font-family:var(--f-body);font-size:.74rem;border-radius:4px;padding:.05rem .4rem}
-.chain .st.alive{background:var(--sure-soft);color:var(--sure)}
-.chain .st.dead{background:var(--impossible-soft);color:var(--impossible)}
-.cot-res{font-size:.88rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.6rem}
-.cot-res .mono{background:var(--surface-2);padding:.15rem .4rem;border-radius:4px}
+    :root[data-theme="dark"] {
+      --bg: #0C1118;
+      --surface: #141B25;
+      --surface-2: #1C2531;
+      --ink: #E8EDF4;
+      --ink-2: #B7C1CF;
+      --muted: #8C98AA;
+      --rule: #2A3443;
+      --grid: #222B38;
+      --accent: #7F9CFF;
+      --accent-ink: #0C1118;
+      --accent-soft: #1B2645;
+      --accent-line: #3B4F8F;
+      --bar-emph: #6585F2;
+      --bar: #56627A;
+      --path: #FF8A50;
+      --path-soft: #3A2216;
+      --sure: #57C994;
+      --sure-soft: #15301F;
+      --likely: #E5AE48;
+      --likely-soft: #33270F;
+      --impossible: #F2786C;
+      --impossible-soft: #3A1A17;
+      --shadow: none;
+      color-scheme: dark;
+    }
 
-/* ---------- Page 2: first step ---------- */
-.fs-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:1rem;align-items:start}
-.fs-grid .panel{display:flex;flex-direction:column;gap:.7rem;padding:1.4rem 1.5rem}
-.fs-grid h3{font-size:1.25rem}
-.fs-grid .note{font-size:.95rem;color:var(--ink-2)}
-.fs-grid .fm span{font-size:.86rem;padding:.25rem .5rem}
-.fs-grid .chain li{font-size:.95rem}
-.fs-grid .cot-res{font-size:1rem}
-.fs-count{display:flex;align-items:baseline;gap:.6rem;font-weight:600}
-.fs-count b{font-size:2.6rem;letter-spacing:-.02em;color:var(--sure)}
-.fs-count span{color:var(--ink-2);font-weight:500}
+    html {
+      font-size: calc(16px * var(--zoom))
+    }
 
-/* ---------- Responsive ---------- */
-@media (max-width:1180px){
-  .g24-main{grid-template-columns:minmax(0,1fr)}
-  .side{max-height:none}
-}
-@media (max-width:900px){
-  .fs-grid{grid-template-columns:minmax(0,1fr)}
-  .ctl-play{margin-left:0}
-  .brand .full{display:none}
-}
-@media (max-width:620px){
-  h2{font-size:1.6rem}
-  .zoom{display:none}
-}
-@media (prefers-reduced-motion: reduce){
-  *,*::before,*::after{animation:none!important;transition:none!important}
-}
-</style>
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--f-body);
+      font-size: 1rem;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: var(--f-display);
+      text-wrap: balance;
+      margin: 0;
+      letter-spacing: -.01em
+    }
+
+    p {
+      margin: 0
+    }
+
+    button {
+      font: inherit;
+      color: inherit
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px
+    }
+
+    .mono,
+    code,
+    kbd {
+      font-family: var(--f-mono)
+    }
+
+    kbd {
+      font-size: .78em;
+      border: 1px solid var(--rule);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      padding: 0 .3em;
+      background: var(--surface)
+    }
+
+    var {
+      font-style: italic;
+      font-family: var(--f-body)
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      position: sticky;
+      top: env(safe-area-inset-top, 0px);
+      z-index: 30;
+      background: var(--bg);
+      border-bottom: 1px solid var(--rule)
+    }
+
+    .topbar-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: .55rem 1.25rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-family: var(--f-display);
+      font-weight: 700;
+      font-size: 1.02rem;
+      white-space: nowrap
+    }
+
+    .brand svg {
+      width: 1.3rem;
+      height: 1.3rem;
+      flex: none
+    }
+
+    .tabs {
+      display: flex;
+      gap: .15rem;
+      overflow-x: auto;
+      flex: 1;
+      min-width: 0;
+      scrollbar-width: none
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none
+    }
+
+    .tab {
+      border: 0;
+      background: transparent;
+      color: var(--ink-2);
+      padding: .38rem .6rem;
+      border-radius: 6px;
+      white-space: nowrap;
+      cursor: pointer;
+      font-size: .84rem
+    }
+
+    .tab:hover {
+      background: var(--surface-2)
+    }
+
+    .tab .n {
+      font-family: var(--f-mono);
+      font-size: .72rem;
+      color: var(--muted);
+      margin-right: .35rem
+    }
+
+    .tab[aria-selected="true"] {
+      background: var(--ink);
+      color: var(--bg)
+    }
+
+    .tab[aria-selected="true"] .n {
+      color: inherit;
+      opacity: .7
+    }
+
+    .zoom {
+      display: flex;
+      align-items: center;
+      gap: .15rem;
+      font-size: .75rem;
+      color: var(--muted);
+      flex: none
+    }
+
+    .zoom button {
+      border: 1px solid var(--rule);
+      background: var(--surface);
+      border-radius: 5px;
+      padding: .15rem .4rem;
+      cursor: pointer;
+      font-size: .75rem
+    }
+
+    .zoom span {
+      min-width: 2.6rem;
+      text-align: center;
+      font-family: var(--f-mono);
+      font-variant-numeric: tabular-nums
+    }
+
+    /* ---------- Stage ---------- */
+    main {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding-inline: 1.25rem;
+      padding-block: 1.6rem 2.5rem
+    }
+
+    .scene {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      animation: enter .35s ease both
+    }
+
+    @keyframes enter {
+      from {
+        transform: translateY(6px)
+      }
+
+      to {
+        transform: none
+      }
+    }
+
+    .scene-head {
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+      max-width: 62rem
+    }
+
+    .eyebrow {
+      font-family: var(--f-mono);
+      font-size: .74rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted)
+    }
+
+    h2 {
+      font-size: 2.05rem;
+      font-weight: 700;
+      line-height: 1.12
+    }
+
+    h3 {
+      font-size: 1.08rem;
+      font-weight: 700;
+      line-height: 1.25
+    }
+
+    h4 {
+      font-size: .8rem;
+      font-family: var(--f-mono);
+      font-weight: 500;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted)
+    }
+
+    .lede {
+      font-size: 1.06rem;
+      color: var(--ink-2);
+      max-width: 65ch
+    }
+
+    .note {
+      font-size: .84rem;
+      color: var(--muted);
+      max-width: 70ch
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: 1.1rem 1.2rem;
+      box-shadow: var(--shadow);
+      min-width: 0
+    }
+
+    .scene-foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--rule);
+      padding-top: 1rem;
+      margin-top: .5rem
+    }
+
+    .scene-foot button {
+      border: 0;
+      background: none;
+      cursor: pointer;
+      color: var(--ink-2);
+      font-size: .9rem;
+      padding: .3rem 0;
+      text-align: left
+    }
+
+    .scene-foot button:hover {
+      color: var(--accent)
+    }
+
+    .scene-foot .next {
+      text-align: right;
+      margin-left: auto
+    }
+
+    .scene-foot small {
+      display: block;
+      font-family: var(--f-mono);
+      font-size: .7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em
+    }
+
+    .keyhint {
+      font-size: .78rem;
+      color: var(--muted);
+      align-self: center
+    }
+
+    .btn {
+      border: 1px solid var(--rule);
+      background: var(--surface);
+      border-radius: 7px;
+      padding: .45rem .8rem;
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 500;
+      white-space: nowrap
+    }
+
+    .btn:hover {
+      border-color: var(--ink-2)
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-ink)
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.08);
+      border-color: var(--accent)
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: default
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--rule);
+      border-radius: 7px;
+      overflow: hidden;
+      background: var(--surface)
+    }
+
+    .seg button {
+      border: 0;
+      background: none;
+      padding: .4rem .7rem;
+      cursor: pointer;
+      font-size: .86rem;
+      border-right: 1px solid var(--rule)
+    }
+
+    .seg button:last-child {
+      border-right: 0
+    }
+
+    .seg button[aria-pressed="true"] {
+      background: var(--ink);
+      color: var(--bg)
+    }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .86rem;
+      color: var(--ink-2);
+      cursor: pointer
+    }
+
+    .switch input {
+      accent-color: var(--accent);
+      width: 1rem;
+      height: 1rem
+    }
+
+    /* verdict pills */
+    .pill {
+      display: inline-grid;
+      place-items: center;
+      font-family: var(--f-mono);
+      font-size: .64rem;
+      font-weight: 600;
+      min-width: 1.15rem;
+      height: 1.15rem;
+      border-radius: 3px;
+      padding: 0 .2rem
+    }
+
+    .pill.sure {
+      background: var(--sure-soft);
+      color: var(--sure)
+    }
+
+    .pill.likely,
+    .pill.maybe {
+      background: var(--likely-soft);
+      color: var(--likely)
+    }
+
+    .pill.impossible {
+      background: var(--impossible-soft);
+      color: var(--impossible)
+    }
+
+    .pill.wide {
+      padding: 0 .4rem;
+      font-size: .7rem;
+      height: 1.3rem
+    }
+
+    /* ---------- 4. Game of 24 ---------- */
+    .g24-head {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: space-between;
+      align-items: flex-end;
+      max-width: none;
+      flex-wrap: wrap
+    }
+
+    .g24-head>div {
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+      max-width: 58rem
+    }
+
+    .sim-chip {
+      font-size: .8rem;
+      color: var(--ink-2);
+      background: var(--likely-soft);
+      border-radius: 8px;
+      padding: .55rem .75rem;
+      max-width: 24rem
+    }
+
+    .sim-chip b {
+      color: var(--likely)
+    }
+
+    .g24-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .9rem 1.6rem;
+      align-items: flex-end;
+      padding: .85rem 1rem
+    }
+
+    .ctl {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+      min-width: 0
+    }
+
+    .ctl>.seg,
+    .ctl>.btn {
+      align-self: flex-start
+    }
+
+    .ctl-label {
+      font-family: var(--f-mono);
+      font-size: .7rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted)
+    }
+
+    .ctl-row {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .chip {
+      border: 1px solid var(--rule);
+      background: var(--surface);
+      border-radius: 999px;
+      padding: .3rem .65rem;
+      font-family: var(--f-mono);
+      font-size: .8rem;
+      cursor: pointer
+    }
+
+    .chip[aria-pressed="true"] {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: var(--bg)
+    }
+
+    .custom {
+      display: flex;
+      gap: .35rem
+    }
+
+    .custom input {
+      font-family: var(--f-mono);
+      font-size: .82rem;
+      width: 8.5rem;
+      border: 1px solid var(--rule);
+      border-radius: 7px;
+      padding: .35rem .5rem;
+      background: var(--surface);
+      color: var(--ink)
+    }
+
+    .ctl-play {
+      margin-left: auto;
+      flex-direction: row;
+      gap: .45rem;
+      align-items: center
+    }
+
+    .narr {
+      font-size: 1.02rem;
+      color: var(--ink-2);
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: .75rem 1rem;
+      min-height: 3.3rem;
+      display: flex;
+      gap: .75rem;
+      align-items: center
+    }
+
+    .narr b {
+      color: var(--ink)
+    }
+
+    .narr .ph {
+      font-family: var(--f-mono);
+      font-size: .72rem;
+      background: var(--ink);
+      color: var(--bg);
+      border-radius: 4px;
+      padding: .15rem .45rem;
+      white-space: nowrap;
+      flex: none
+    }
+
+    .narr .ok {
+      color: var(--sure);
+      font-weight: 600
+    }
+
+    .narr .bad {
+      color: var(--impossible);
+      font-weight: 600
+    }
+
+    .g24-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 23rem;
+      gap: .9rem;
+      align-items: start
+    }
+
+    .tree-wrap {
+      overflow-x: auto;
+      min-width: 0
+    }
+
+    .tree {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(12.5rem, 1fr)) minmax(11rem, .85fr);
+      gap: .6rem;
+      min-width: 0
+    }
+
+    .col {
+      background: var(--surface);
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0
+    }
+
+    .col-head {
+      padding: .6rem .75rem .5rem;
+      border-bottom: 1px solid var(--rule);
+      display: flex;
+      flex-direction: column;
+      gap: .1rem
+    }
+
+    .col-head .ct {
+      display: flex;
+      justify-content: space-between;
+      gap: .5rem;
+      align-items: baseline
+    }
+
+    .col-head h3 {
+      font-size: .95rem
+    }
+
+    .col-head .cnt {
+      font-family: var(--f-mono);
+      font-size: .7rem;
+      color: var(--muted);
+      white-space: nowrap
+    }
+
+    .col-head .sub {
+      font-size: .76rem;
+      color: var(--muted)
+    }
+
+    .col.live {
+      border-color: var(--ink)
+    }
+
+    .col-body {
+      max-height: 31rem;
+      overflow-y: auto;
+      padding: .35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px
+    }
+
+    .ghost {
+      font-size: .84rem;
+      color: var(--muted);
+      padding: 1rem .6rem;
+      text-align: center;
+      border: 1px dashed var(--rule);
+      border-radius: 8px;
+      margin: .3rem
+    }
+
+    .grp-head {
+      font-size: .72rem;
+      color: var(--muted);
+      padding: .45rem .4rem .15rem;
+      display: flex;
+      gap: .35rem;
+      align-items: center;
+      font-family: var(--f-mono)
+    }
+
+    .grp-head:first-child {
+      padding-top: .15rem
+    }
+
+    .grp-more {
+      font-size: .72rem;
+      color: var(--muted);
+      padding: .1rem .45rem .3rem 2rem;
+      font-family: var(--f-mono)
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+      column-gap: .4rem;
+      align-items: center;
+      padding: .28rem .4rem;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      width: 100%;
+      text-align: left;
+      background: none;
+      animation: pop .3s ease both;
+      animation-delay: calc(var(--i, 0) * 22ms)
+    }
+
+    @keyframes pop {
+      from {
+        opacity: .2;
+        transform: translateX(-4px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    .row:hover {
+      background: var(--surface-2)
+    }
+
+    .row .eq {
+      font-family: var(--f-mono);
+      font-size: .8rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .row .lf {
+      font-family: var(--f-mono);
+      font-size: .7rem;
+      color: var(--muted);
+      grid-column: 2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .row .vals {
+      grid-row: 1 / span 2;
+      grid-column: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .12rem
+    }
+
+    .row .pills {
+      display: flex;
+      gap: 2px
+    }
+
+    .row .score {
+      font-family: var(--f-mono);
+      font-size: .7rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink-2)
+    }
+
+    .row .rk {
+      grid-row: 1 / span 2
+    }
+
+    .row.kept {
+      background: var(--accent-soft);
+      border-color: var(--accent-line)
+    }
+
+    .row.pruned {
+      opacity: .42
+    }
+
+    .row.pruned .eq {
+      text-decoration: line-through
+    }
+
+    .row.onpath {
+      border-color: var(--path);
+      background: var(--path-soft)
+    }
+
+    .row.sel {
+      outline: 2px solid var(--ink);
+      outline-offset: -1px
+    }
+
+    .rank {
+      width: 1.2rem;
+      height: 1.2rem;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font-family: var(--f-mono);
+      font-size: .66rem;
+      font-weight: 600;
+      display: inline-grid;
+      place-items: center;
+      flex: none
+    }
+
+    .rank.path {
+      background: var(--path)
+    }
+
+    .out-card {
+      padding: .9rem;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem
+    }
+
+    .out-big {
+      font-family: var(--f-mono);
+      font-size: 2.2rem;
+      font-weight: 600;
+      line-height: 1
+    }
+
+    .out-big.ok {
+      color: var(--sure)
+    }
+
+    .out-big.bad {
+      color: var(--impossible)
+    }
+
+    .out-eq {
+      font-family: var(--f-mono);
+      font-size: .9rem;
+      background: var(--surface-2);
+      padding: .45rem .55rem;
+      border-radius: 6px;
+      word-break: break-word
+    }
+
+    .out-path {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-family: var(--f-mono);
+      font-size: .78rem;
+      color: var(--ink-2)
+    }
+
+    .out-meta {
+      font-size: .76rem;
+      color: var(--muted);
+      border-top: 1px solid var(--rule);
+      padding-top: .5rem
+    }
+
+    .side {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      max-height: 42rem
+    }
+
+    .side-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--rule)
+    }
+
+    .side-tabs button {
+      flex: 1;
+      border: 0;
+      background: none;
+      padding: .65rem .5rem;
+      cursor: pointer;
+      font-size: .86rem;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px
+    }
+
+    .side-tabs button[aria-selected="true"] {
+      color: var(--ink);
+      border-bottom-color: var(--ink);
+      font-weight: 600
+    }
+
+    .side-pane {
+      padding: .9rem 1rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem
+    }
+
+    .algo {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .2rem
+    }
+
+    .algo li {
+      border-radius: 6px;
+      padding: .4rem .5rem;
+      display: flex;
+      flex-direction: column;
+      gap: .1rem;
+      transition: background .25s
+    }
+
+    .algo li code {
+      font-size: .8rem;
+      white-space: nowrap;
+      overflow-x: auto
+    }
+
+    .algo li span {
+      font-size: .78rem;
+      color: var(--muted)
+    }
+
+    .algo li.ind {
+      margin-left: 1rem
+    }
+
+    .algo li.on {
+      background: var(--accent-soft)
+    }
+
+    .algo li.on code {
+      color: var(--accent);
+      font-weight: 600
+    }
+
+    .algo li.on span {
+      color: var(--ink-2)
+    }
+
+    .algo-state {
+      font-family: var(--f-mono);
+      font-size: .78rem;
+      color: var(--ink-2);
+      background: var(--surface-2);
+      border-radius: 6px;
+      padding: .4rem .55rem
+    }
+
+    .legend-v {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      font-size: .8rem;
+      color: var(--ink-2)
+    }
+
+    .legend-v div {
+      display: flex;
+      gap: .45rem;
+      align-items: center
+    }
+
+    .insp h4 {
+      margin-bottom: .35rem
+    }
+
+    .insp-sec {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem
+    }
+
+    .prompt {
+      font-family: var(--f-mono);
+      font-size: .74rem;
+      background: var(--surface-2);
+      border-radius: 6px;
+      padding: .55rem .6rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--ink-2);
+      margin: 0
+    }
+
+    .prompt b {
+      color: var(--ink);
+      font-weight: 600
+    }
+
+    .reply {
+      font-family: var(--f-mono);
+      font-size: .76rem;
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      padding: .5rem .6rem;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem
+    }
+
+    .reply .ln {
+      display: flex;
+      gap: .45rem;
+      align-items: flex-start;
+      justify-content: space-between
+    }
+
+    .reply .ln.hi {
+      color: var(--accent);
+      font-weight: 600
+    }
+
+    .truth {
+      font-size: .8rem;
+      border-radius: 6px;
+      padding: .45rem .6rem;
+      background: var(--surface-2);
+      color: var(--ink-2)
+    }
+
+    .truth.warn {
+      background: var(--likely-soft);
+      color: var(--ink)
+    }
+
+    .pathlist {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-family: var(--f-mono);
+      font-size: .78rem
+    }
+
+    .pathlist li.cur {
+      color: var(--accent);
+      font-weight: 600
+    }
+
+    .g24-opts {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .fm {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .3rem;
+      margin: .6rem 0
+    }
+
+    .fm span {
+      font-family: var(--f-mono);
+      font-size: .72rem;
+      border-radius: 4px;
+      padding: .15rem .35rem;
+      background: var(--surface-2);
+      color: var(--muted)
+    }
+
+    .fm span.alive {
+      background: var(--sure-soft);
+      color: var(--sure);
+      font-weight: 600
+    }
+
+    .fm-legend {
+      display: flex;
+      gap: 1rem;
+      font-size: .76rem;
+      color: var(--muted);
+      flex-wrap: wrap
+    }
+
+    .fm-legend i {
+      display: inline-block;
+      width: .7rem;
+      height: .7rem;
+      border-radius: 2px;
+      margin-right: .3rem;
+      vertical-align: -1px
+    }
+
+    .chain {
+      list-style: none;
+      margin: .6rem 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem
+    }
+
+    .chain li {
+      display: flex;
+      gap: .6rem;
+      align-items: center;
+      font-family: var(--f-mono);
+      font-size: .8rem;
+      flex-wrap: wrap
+    }
+
+    .chain .st {
+      font-family: var(--f-body);
+      font-size: .74rem;
+      border-radius: 4px;
+      padding: .05rem .4rem
+    }
+
+    .chain .st.alive {
+      background: var(--sure-soft);
+      color: var(--sure)
+    }
+
+    .chain .st.dead {
+      background: var(--impossible-soft);
+      color: var(--impossible)
+    }
+
+    .cot-res {
+      font-size: .88rem;
+      display: flex;
+      gap: .6rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: .6rem
+    }
+
+    .cot-res .mono {
+      background: var(--surface-2);
+      padding: .15rem .4rem;
+      border-radius: 4px
+    }
+
+    /* ---------- Page 2: first step ---------- */
+    .fs-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 1rem;
+      align-items: start
+    }
+
+    .fs-grid .panel {
+      display: flex;
+      flex-direction: column;
+      gap: .7rem;
+      padding: 1.4rem 1.5rem
+    }
+
+    .fs-grid h3 {
+      font-size: 1.25rem
+    }
+
+    .fs-grid .note {
+      font-size: .95rem;
+      color: var(--ink-2)
+    }
+
+    .fs-grid .fm span {
+      font-size: .86rem;
+      padding: .25rem .5rem
+    }
+
+    .fs-grid .chain li {
+      font-size: .95rem
+    }
+
+    .fs-grid .cot-res {
+      font-size: 1rem
+    }
+
+    .fs-count {
+      display: flex;
+      align-items: baseline;
+      gap: .6rem;
+      font-weight: 600
+    }
+
+    .fs-count b {
+      font-size: 2.6rem;
+      letter-spacing: -.02em;
+      color: var(--sure)
+    }
+
+    .fs-count span {
+      color: var(--ink-2);
+      font-weight: 500
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width:1180px) {
+      .g24-main {
+        grid-template-columns: minmax(0, 1fr)
+      }
+
+      .side {
+        max-height: none
+      }
+    }
+
+    @media (max-width:900px) {
+      .fs-grid {
+        grid-template-columns: minmax(0, 1fr)
+      }
+
+      .ctl-play {
+        margin-left: 0
+      }
+
+      .brand .full {
+        display: none
+      }
+    }
+
+    @media (max-width:620px) {
+      h2 {
+        font-size: 1.6rem
+      }
+
+      .zoom {
+        display: none
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important
+      }
+    }
+  </style>
 
 </head>
+
 <body>
-<header class="topbar">
-  <div class="topbar-inner">
-    <div class="brand">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v4M12 9l-6 5M12 9l6 5M6 14v4"/></g><circle cx="12" cy="4" r="2.2" fill="currentColor"/><circle cx="6" cy="14" r="2.2" fill="var(--accent)"/><circle cx="18" cy="14" r="2.2" fill="var(--impossible)"/><circle cx="6" cy="19.5" r="2.2" fill="var(--path)"/></svg>
-      <span>ToT<span class="full"> · Yao et al. 2023</span></span>
-    </div>
-    <nav class="tabs" id="tabs" role="tablist" aria-label="Sections"></nav>
-    <div class="zoom" role="group" aria-label="Text size">
-      <button id="zoomOut" aria-label="Smaller text">A−</button><span id="zoomVal">100%</span><button id="zoomIn" aria-label="Larger text">A+</button>
-    </div>
-  </div>
-</header>
-
-<main id="main">
-
-<!-- ======================= PAGE 1 · GAME OF 24 SEARCH ======================= -->
-<section class="scene" id="game24" data-name="Game of 24 search">
-  <header class="scene-head g24-head">
-    <div>
-      <p class="eyebrow">Experiment 1 · paper §4.1 and Figure 2</p>
-      <h2>Game of 24, one search step at a time</h2>
-      <p class="lede">Combine 4 numbers with + − × ÷ to reach 24. ToT takes 3 steps, one equation each. At every step the LM proposes equations, rates what is left, and only the best <var>b</var> states survive.</p>
-    </div>
-    <p class="sim-chip"><b>Simulated LM.</b> Proposals and ratings are produced in your browser by rules that copy the paper's prompts (quick lookahead plus "too big / too small" common sense), with random sampling. No model is called, so it runs instantly and offline.</p>
-  </header>
-
-  <div class="panel g24-bar">
-    <div class="ctl">
-      <span class="ctl-label">Numbers</span>
-      <div class="ctl-row">
-        <div class="ctl-row" id="g24Presets"></div>
-        <form class="custom" id="g24Form"><label for="g24Input" class="sr" hidden>Custom numbers</label><input id="g24Input" placeholder="e.g. 1 4 8 8" autocomplete="off" aria-label="Your own four numbers"><button class="btn" type="submit">Use</button></form>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 5v4M12 9l-6 5M12 9l6 5M6 14v4" />
+          </g>
+          <circle cx="12" cy="4" r="2.2" fill="currentColor" />
+          <circle cx="6" cy="14" r="2.2" fill="var(--accent)" />
+          <circle cx="18" cy="14" r="2.2" fill="var(--impossible)" />
+          <circle cx="6" cy="19.5" r="2.2" fill="var(--path)" />
+        </svg>
+        <span>ToT<span class="full"> · Yao et al. 2023</span></span>
+      </div>
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Sections"></nav>
+      <div class="zoom" role="group" aria-label="Text size">
+        <button id="zoomOut" aria-label="Smaller text">A−</button><span id="zoomVal">100%</span><button id="zoomIn"
+          aria-label="Larger text">A+</button>
       </div>
     </div>
-    <div class="ctl">
-      <span class="ctl-label">Breadth b (states kept per step)</span>
-      <div class="seg" id="g24B"></div>
-    </div>
-    <div class="ctl">
-      <span class="ctl-label">LM randomness</span>
-      <button class="btn" id="g24Seed">Re-sample · <span id="g24SeedN">run 1</span></button>
-    </div>
-    <div class="ctl ctl-play">
-      <button class="btn" id="g24Reset">Reset</button>
-      <button class="btn" id="g24Play">Play all</button>
-      <button class="btn btn-primary" id="g24Next">Next step →</button>
-    </div>
-  </div>
+  </header>
 
-  <div class="narr" id="g24Narr" aria-live="polite"></div>
+  <main id="main">
 
-  <div class="g24-main">
+    <!-- ======================= PAGE 1 · GAME OF 24 SEARCH ======================= -->
+    <section class="scene" id="game24" data-name="Game of 24 search">
+      <header class="scene-head g24-head">
+        <div>
+          <p class="eyebrow">Experiment 1 · paper §4.1 and Figure 2</p>
+          <h2>Game of 24, one search step at a time</h2>
+          <p class="lede">Combine 4 numbers with + − × ÷ to reach 24. ToT takes 3 steps, one equation each. At every
+            step the LM proposes equations, rates what is left, and only the best <var>b</var> states survive.</p>
+        </div>
+        <p class="sim-chip"><b>Simulated LM.</b> Proposals and ratings are produced in your browser by rules that copy
+          the paper's prompts (quick lookahead plus "too big / too small" common sense), with random sampling. No model
+          is called, so it runs instantly and offline.</p>
+      </header>
+
+      <div class="panel g24-bar">
+        <div class="ctl">
+          <span class="ctl-label">Numbers</span>
+          <div class="ctl-row">
+            <div class="ctl-row" id="g24Presets"></div>
+            <form class="custom" id="g24Form"><label for="g24Input" class="sr" hidden>Custom numbers</label><input
+                id="g24Input" placeholder="e.g. 1 4 8 8" autocomplete="off" aria-label="Your own four numbers"><button
+                class="btn" type="submit">Use</button></form>
+          </div>
+        </div>
+        <div class="ctl">
+          <span class="ctl-label">Breadth b (states kept per step)</span>
+          <div class="seg" id="g24B"></div>
+        </div>
+        <div class="ctl">
+          <span class="ctl-label">LM randomness</span>
+          <button class="btn" id="g24Seed">Re-sample · <span id="g24SeedN">run 1</span></button>
+        </div>
+        <div class="ctl ctl-play">
+          <button class="btn" id="g24Reset">Reset</button>
+          <button class="btn" id="g24Play">Play all</button>
+          <button class="btn btn-primary" id="g24Next">Next step →</button>
+        </div>
+      </div>
+
+      <div class="narr" id="g24Narr" aria-live="polite"></div>
+
+      <!-- <div class="g24-main">
     <div class="tree-wrap"><div class="tree" id="g24Tree"></div></div>
     <aside class="panel side">
       <div class="side-tabs" role="tablist">
@@ -312,516 +1395,581 @@ h4{font-size:.8rem;font-family:var(--f-mono);font-weight:500;letter-spacing:.06e
       </div>
       <div class="side-pane insp" id="paneInsp" role="tabpanel" hidden></div>
     </aside>
-  </div>
+  </div> -->
+      <div class="g24-main">
+        <div class="tree-wrap">
+          <div class="tree" id="g24Tree"></div>
+        </div>
+        <aside class="panel side">
+          <div class="side-tabs" role="tablist">
+            <button role="tab" id="tabAlgo" aria-selected="true" aria-controls="paneAlgo">Algorithm</button>
+            <button role="tab" id="tabInsp" aria-selected="false" aria-controls="paneInsp">Prompt &amp; reply</button>
+          </div>
+          <div class="side-pane" id="paneAlgo" role="tabpanel">
+            <ol class="algo" id="algo">
+              <li data-l="0">
+                <code>1. Start with Input</code>
+                <span>Begin with your 4 starting numbers.</span>
+              </li>
+              <li data-l="1">
+                <code>Repeat for 3 Steps</code>
+                <span>Build 3 consecutive equations to reach 24.</span>
+              </li>
+              <li data-l="2" class="ind">
+                <code>A. Brainstorm Moves</code>
+                <span>Ask the AI: "Suggest multiple possible next equations."</span>
+              </li>
+              <li data-l="3" class="ind">
+                <code>B. Score Each Option</code>
+                <span>Ask the AI: "Can these remaining numbers still make 24?"</span>
+              </li>
+              <li data-l="4" class="ind">
+                <code>C. Keep Top 5 &amp; Prune</code>
+                <span>Keep the 5 highest-rated paths. Discard dead ends.</span>
+              </li>
+              <li data-l="5">
+                <code>2. Final Output</code>
+                <span>Take the best surviving path and write the full equation.</span>
+              </li>
+            </ol>
+            <div class="algo-state" id="algoState"></div>
+            <div class="mono">We are on step t of 3, keeping the top 5 paths at each stage, and having the AI brainstorm
+              between 3 to 8 candidate moves depending on how many numbers are left.</div>
+            <div class="legend-v">
+              <div><span class="pill sure">S</span> <b>Sure (20 pts)</b>: AI sees a clear arithmetic path to 24.</div>
+              <div><span class="pill likely">L</span> <b>Likely (1 pt)</b>: Numbers look workable, but not guaranteed.
+              </div>
+              <div><span class="pill impossible">I</span> <b>Impossible (0 pts)</b>: Numbers are too big, too small, or
+                a dead end.</div>
+              <div style="color:var(--muted); margin-top:0.25rem;">Each proposal is evaluated 3 times to get an average
+                rating.</div>
+            </div>
+            <p class="note" style="border-top:1px solid var(--rule); padding-top:0.5rem; margin-top:0.5rem;">
+              <b>How it works:</b> No special code or extra models. Every step is just a normal text prompt sent to the
+              language model.
+            </p>
+          </div>
+          <div class="side-pane insp" id="paneInsp" role="tabpanel" hidden></div>
+        </aside>
+      </div>
 
-  <div class="g24-opts">
-    <label class="switch"><input type="checkbox" id="g24ShowPruned" checked> Show pruned thoughts</label>
-    <span class="keyhint"><kbd>→</kbd> advances the search, then moves to the next section. Click any thought to see its prompts.</span>
-  </div>
+      <div class="g24-opts">
+        <label class="switch"><input type="checkbox" id="g24ShowPruned" checked> Show pruned thoughts</label>
+        <span class="keyhint"><kbd>→</kbd> advances the search, then moves to the next section. Click any thought to see
+          its prompts.</span>
+      </div>
 
-</section>
+    </section>
 
-<!-- ======================= PAGE 2 · FIRST STEP ======================= -->
-<section class="scene" id="firststep" data-name="Why the first step matters" hidden>
-  <header class="scene-head">
-    <p class="eyebrow">Why search helps · paper §4.1 and Figure 3b</p>
-    <h2>Why the first step decides so much</h2>
-    <p class="lede">Chain of thought writes one path and never revises it. In the paper, about 60% of GPT-4’s chain-of-thought attempts at Game of 24 had already failed after the first step. Here is why, for the numbers chosen on the search page.</p>
-  </header>
-  <div class="fs-grid">
-    <div class="panel">
-      <h3>Every possible first equation</h3>
-      <p class="fs-count" id="fsCount"></p>
-      <p class="note" id="fmText"></p>
-      <div class="fm" id="fmTiles"></div>
-      <div class="fm-legend"><span><i style="background:var(--sure-soft);border:1px solid var(--sure)"></i>24 still reachable</span><span><i style="background:var(--surface-2);border:1px solid var(--rule)"></i>dead end</span></div>
-    </div>
-    <div class="panel">
-      <h3>Chain of thought on the same numbers</h3>
-      <p class="note">One left-to-right sample from the same simulated LM: no ratings, no going back.</p>
-      <ol class="chain" id="cotChain"></ol>
-      <div class="cot-res" id="cotRes"></div>
-      <div class="ctl-row"><button class="btn" id="cotAgain">Sample another chain</button><span class="note" id="cotTally"></span></div>
-    </div>
-  </div>
-</section>
+    <!-- ======================= PAGE 2 · FIRST STEP ======================= -->
+    <section class="scene" id="firststep" data-name="Why the first step matters" hidden>
+      <header class="scene-head">
+        <p class="eyebrow">Why search helps · paper §4.1 and Figure 3b</p>
+        <h2>Why the first step decides so much</h2>
+        <p class="lede">Chain of thought writes one path and never revises it. In the paper, about 60% of GPT-4’s
+          chain-of-thought attempts at Game of 24 had already failed after the first step. Here is why, for the numbers
+          chosen on the search page.</p>
+      </header>
+      <div class="fs-grid">
+        <div class="panel">
+          <h3>Every possible first equation</h3>
+          <p class="fs-count" id="fsCount"></p>
+          <p class="note" id="fmText"></p>
+          <div class="fm" id="fmTiles"></div>
+          <div class="fm-legend"><span><i style="background:var(--sure-soft);border:1px solid var(--sure)"></i>24 still
+              reachable</span><span><i style="background:var(--surface-2);border:1px solid var(--rule)"></i>dead
+              end</span></div>
+        </div>
+        <div class="panel">
+          <h3>Chain of thought on the same numbers</h3>
+          <p class="note">One left-to-right sample from the same simulated LM: no ratings, no going back.</p>
+          <ol class="chain" id="cotChain"></ol>
+          <div class="cot-res" id="cotRes"></div>
+          <div class="ctl-row"><button class="btn" id="cotAgain">Sample another chain</button><span class="note"
+              id="cotTally"></span></div>
+        </div>
+      </div>
+    </section>
 
-</main>
-<div class="tip" id="tip" role="tooltip" hidden></div>
+  </main>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
 
-<script>
-(() => {
-'use strict';
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const store = {
-  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
-};
+  <script>
+    (() => {
+      'use strict';
+      const $ = (s, r = document) => r.querySelector(s);
+      const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+      const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const store = {
+        get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+      };
 
-/*LOGIC-START*/
-const T24 = (() => {
-  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { const t = a % b; a = b; b = t; } return a || 1; };
-  const Q = (n, d = 1) => { if (d < 0) { n = -n; d = -d; } const g = gcd(n, d); return { n: n / g, d: d / g }; };
-  const add = (a, b) => Q(a.n * b.d + b.n * a.d, a.d * b.d);
-  const sub = (a, b) => Q(a.n * b.d - b.n * a.d, a.d * b.d);
-  const mul = (a, b) => Q(a.n * b.n, a.d * b.d);
-  const div = (a, b) => (b.n === 0 ? null : Q(a.n * b.d, a.d * b.n));
-  const cmp = (a, b) => a.n * b.d - b.n * a.d;
-  const num = a => a.n / a.d;
-  const is24 = a => a.n === 24 && a.d === 1;
-  const fmt = a => (a.d === 1 ? String(a.n) : a.n + '/' + a.d);
-  const apply = (op, a, b) => op === '+' ? add(a, b) : op === '−' ? sub(a, b) : op === '×' ? mul(a, b) : div(a, b);
-  const prec = op => (op === '+' || op === '−' ? 1 : 2);
-  function pretty(t) {
-    if (!t.op) return t.n;
-    const p = prec(t.op);
-    const l = t.l.op && prec(t.l.op) < p ? '(' + pretty(t.l) + ')' : pretty(t.l);
-    const needs = t.r.op && (prec(t.r.op) < p || (prec(t.r.op) === p && (t.op === '−' || t.op === '÷')));
-    return l + ' ' + t.op + ' ' + (needs ? '(' + pretty(t.r) + ')' : pretty(t.r));
-  }
-  const leaf = v => ({ v, t: { n: fmt(v) }, frac: v.d !== 1 });
-  const combine = (op, a, b) => {
-    const v = apply(op, a.v, b.v);
-    return v && { v, t: { op, l: a.t, r: b.t }, frac: a.frac || b.frac || v.d !== 1 };
-  };
-  const label = items => items.map(i => i.v).sort(cmp).map(fmt).join(' ');
-  const pairs = (a, b) => [combine('+', a, b), combine('×', a, b), combine('−', a, b), combine('−', b, a), combine('÷', a, b), combine('÷', b, a)].filter(Boolean);
-  const memo = new Map();
-  function solvable(items) {
-    if (items.length === 1) return is24(items[0].v);
-    const k = label(items);
-    if (memo.has(k)) return memo.get(k);
-    let ok = false;
-    outer: for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
-      const rest = items.filter((_, x) => x !== i && x !== j);
-      for (const r of pairs(items[i], items[j])) if (solvable([...rest, r])) { ok = true; break outer; }
-    }
-    memo.set(k, ok);
-    return ok;
-  }
-  function allExprs(items) {
-    if (items.length === 1) return [items[0]];
-    const out = [];
-    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
-      const rest = items.filter((_, x) => x !== i && x !== j);
-      for (const r of pairs(items[i], items[j])) for (const e of allExprs([...rest, r])) out.push(e);
-    }
-    return out;
-  }
-  function solutions(items) {
-    const seen = new Set(), out = [];
-    for (const x of allExprs(items)) {
-      if (!is24(x.v)) continue;
-      const s = pretty(x.t);
-      if (!seen.has(s)) { seen.add(s); out.push({ s, frac: x.frac }); }
-    }
-    return out.sort((a, b) => (a.frac - b.frac) || (a.s.length - b.s.length));
-  }
-  // Distinct next equations an LM could write: larger number first, no negatives.
-  function moves(items) {
-    const out = [], seen = new Set();
-    for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
-      let a = items[i], b = items[j];
-      if (cmp(a.v, b.v) < 0) [a, b] = [b, a];
-      const rest = items.filter((_, x) => x !== i && x !== j);
-      const opts = [['+', a, b], ['×', a, b], ['−', a, b], ['÷', a, b]];
-      if (cmp(a.v, b.v) !== 0) opts.push(['÷', b, a]);
-      for (const [op, x, y] of opts) {
-        const r = combine(op, x, y);
-        if (!r) continue;
-        const next = [...rest, r], k = label(next);
-        if (seen.has(k)) continue;
-        seen.add(k);
-        out.push({ text: fmt(x.v) + ' ' + op + ' ' + fmt(y.v) + ' = ' + fmt(r.v), items: next, r: r.v, op, y: y.v });
+      /*LOGIC-START*/
+      const T24 = (() => {
+        const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { const t = a % b; a = b; b = t; } return a || 1; };
+        const Q = (n, d = 1) => { if (d < 0) { n = -n; d = -d; } const g = gcd(n, d); return { n: n / g, d: d / g }; };
+        const add = (a, b) => Q(a.n * b.d + b.n * a.d, a.d * b.d);
+        const sub = (a, b) => Q(a.n * b.d - b.n * a.d, a.d * b.d);
+        const mul = (a, b) => Q(a.n * b.n, a.d * b.d);
+        const div = (a, b) => (b.n === 0 ? null : Q(a.n * b.d, a.d * b.n));
+        const cmp = (a, b) => a.n * b.d - b.n * a.d;
+        const num = a => a.n / a.d;
+        const is24 = a => a.n === 24 && a.d === 1;
+        const fmt = a => (a.d === 1 ? String(a.n) : a.n + '/' + a.d);
+        const apply = (op, a, b) => op === '+' ? add(a, b) : op === '−' ? sub(a, b) : op === '×' ? mul(a, b) : div(a, b);
+        const prec = op => (op === '+' || op === '−' ? 1 : 2);
+        function pretty(t) {
+          if (!t.op) return t.n;
+          const p = prec(t.op);
+          const l = t.l.op && prec(t.l.op) < p ? '(' + pretty(t.l) + ')' : pretty(t.l);
+          const needs = t.r.op && (prec(t.r.op) < p || (prec(t.r.op) === p && (t.op === '−' || t.op === '÷')));
+          return l + ' ' + t.op + ' ' + (needs ? '(' + pretty(t.r) + ')' : pretty(t.r));
+        }
+        const leaf = v => ({ v, t: { n: fmt(v) }, frac: v.d !== 1 });
+        const combine = (op, a, b) => {
+          const v = apply(op, a.v, b.v);
+          return v && { v, t: { op, l: a.t, r: b.t }, frac: a.frac || b.frac || v.d !== 1 };
+        };
+        const label = items => items.map(i => i.v).sort(cmp).map(fmt).join(' ');
+        const pairs = (a, b) => [combine('+', a, b), combine('×', a, b), combine('−', a, b), combine('−', b, a), combine('÷', a, b), combine('÷', b, a)].filter(Boolean);
+        const memo = new Map();
+        function solvable(items) {
+          if (items.length === 1) return is24(items[0].v);
+          const k = label(items);
+          if (memo.has(k)) return memo.get(k);
+          let ok = false;
+          outer: for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+            const rest = items.filter((_, x) => x !== i && x !== j);
+            for (const r of pairs(items[i], items[j])) if (solvable([...rest, r])) { ok = true; break outer; }
+          }
+          memo.set(k, ok);
+          return ok;
+        }
+        function allExprs(items) {
+          if (items.length === 1) return [items[0]];
+          const out = [];
+          for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+            const rest = items.filter((_, x) => x !== i && x !== j);
+            for (const r of pairs(items[i], items[j])) for (const e of allExprs([...rest, r])) out.push(e);
+          }
+          return out;
+        }
+        function solutions(items) {
+          const seen = new Set(), out = [];
+          for (const x of allExprs(items)) {
+            if (!is24(x.v)) continue;
+            const s = pretty(x.t);
+            if (!seen.has(s)) { seen.add(s); out.push({ s, frac: x.frac }); }
+          }
+          return out.sort((a, b) => (a.frac - b.frac) || (a.s.length - b.s.length));
+        }
+        // Distinct next equations an LM could write: larger number first, no negatives.
+        function moves(items) {
+          const out = [], seen = new Set();
+          for (let i = 0; i < items.length; i++) for (let j = i + 1; j < items.length; j++) {
+            let a = items[i], b = items[j];
+            if (cmp(a.v, b.v) < 0) [a, b] = [b, a];
+            const rest = items.filter((_, x) => x !== i && x !== j);
+            const opts = [['+', a, b], ['×', a, b], ['−', a, b], ['÷', a, b]];
+            if (cmp(a.v, b.v) !== 0) opts.push(['÷', b, a]);
+            for (const [op, x, y] of opts) {
+              const r = combine(op, x, y);
+              if (!r) continue;
+              const next = [...rest, r], k = label(next);
+              if (seen.has(k)) continue;
+              seen.add(k);
+              out.push({ text: fmt(x.v) + ' ' + op + ' ' + fmt(y.v) + ' = ' + fmt(r.v), items: next, r: r.v, op, y: y.v });
+            }
+          }
+          return out;
+        }
+        // How likely the simulated LM is to write a given equation.
+        function weight(m) {
+          let w = m.r.d !== 1 ? 0.05 : m.r.n === 0 ? 0.08 : 1;
+          if ((m.op === '×' || m.op === '÷') && m.y.n === 1 && m.y.d === 1) w *= 0.4;
+          if (num(m.r) > 100) w *= 0.5;
+          if (m.r.d === 1 && [2, 3, 4, 6, 8, 12].includes(m.r.n)) w *= 1.5; // factors of 24 look promising to a person or an LM
+          if (m.items.length === 1 && is24(m.r)) w *= 8; // with two numbers left, the LM spots the winning operation
+          return w;
+        }
+        function hash(str) { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+        function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+        const rngFor = (key, seed) => mulberry32(hash(key + '#' + seed));
+        // Weighted sampling without replacement (exponential race).
+        const sampleK = (list, k, rng) => list.map(m => ({ m, key: -Math.log(1 - rng()) / weight(m) }))
+          .sort((a, b) => a.key - b.key).slice(0, k).map(x => x.m);
+        const pick = (arr, rng) => arr[Math.floor(rng() * arr.length)];
+        const VALUE = { sure: 20, likely: 1, impossible: 0.001 };
+
+        // One sampled answer to the value prompt for the numbers left in a state.
+        function judge(items, rng) {
+          const nums = items.map(i => i.v).sort(cmp);
+          const lab = nums.map(fmt).join(' ');
+          if (items.length === 1) {
+            return is24(items[0].v) ? { verdict: 'sure', text: lab + ' = 24' } : { verdict: 'impossible', text: lab + ' ≠ 24' };
+          }
+          if (items.length === 2) {
+            const A = leaf(nums[1]), B = leaf(nums[0]);
+            const tries = [combine('+', A, B), combine('−', A, B), combine('×', A, B), combine('÷', A, B)];
+            if (cmp(nums[0], nums[1]) !== 0) tries.push(combine('÷', B, A));
+            const parts = [];
+            let hit = false;
+            for (const r of tries.filter(Boolean)) { parts.push(pretty(r.t) + ' = ' + fmt(r.v)); if (is24(r.v)) { hit = true; break; } }
+            return { verdict: hit ? 'sure' : 'impossible', text: parts.join(', ') + (hit ? '' : '. No way to reach 24') };
+          }
+          const leaves = nums.map(leaf);
+          const sum = combine('+', combine('+', leaves[0], leaves[1]), leaves[2]);
+          const sumText = pretty(sum.t) + ' = ' + fmt(sum.v);
+          if (is24(sum.v)) return { verdict: 'sure', text: sumText };
+          const exprs = allExprs(leaves);
+          const pool = exprs.filter(x => !is24(x.v) && x.v.d === 1 && x.v.n > 0 && !x.frac && pretty(x.t) !== pretty(sum.t));
+          const trial = pool.length ? pick(pool, rng) : null;
+          const tried = [sumText].concat(trial ? [pretty(trial.t) + ' = ' + fmt(trial.v)] : []).join(', ');
+          const truth = solvable(leaves);
+          if (truth) {
+            const hits = exprs.filter(x => is24(x.v));
+            const nice = hits.filter(h => !h.frac);
+            if (rng() < (nice.length ? 0.45 : 0.15)) {
+              const h = pick(nice.length ? nice : hits, rng);
+              return { verdict: 'sure', text: sumText + ', ' + pretty(h.t) + ' = 24' };
+            }
+          } else if (rng() < 0.05) {
+            // an arithmetic slip: the LM "finds" 24 with an expression that is really a near miss (22–26)
+            const onlyPlus = t => !t.op || (t.op === '+' && onlyPlus(t.l) && onlyPlus(t.r));
+            const near = pool.filter(x => Math.abs(num(x.v) - 24) <= 2 && !onlyPlus(x.t))[0];
+            if (near) return { verdict: 'sure', text: sumText + ', ' + pretty(near.t) + ' = 24' };
+          }
+          const maxV = Math.max(...exprs.map(x => num(x.v)));
+          const tooSmall = maxV < 24;
+          const allBig = nums.every(v => num(v) >= 10);
+          const hasHuge = nums.some(v => num(v) > 48);
+          const pImpossible = truth ? 0.2 : (tooSmall || allBig || hasHuge ? 0.92 : 0.6);
+          if (rng() < pImpossible) {
+            const why = tooSmall ? 'These numbers are too small to reach 24' : allBig ? 'These numbers are too big to reach 24' : hasHuge ? fmt(nums[2]) + ' is too big to bring back down to 24' : 'There is no way to reach 24 with these';
+            return { verdict: 'impossible', text: tried + '. ' + why };
+          }
+          return { verdict: 'likely', text: tried + '. I cannot reach 24 yet, but the numbers are in a workable range' };
+        }
+
+        const K = { 4: 8, 3: 6, 2: 3 };
+        function simulate(nums, b, seed) {
+          const root = { id: 'n0', depth: 0, items: nums.map(n => leaf(Q(n))), key: nums.join(' '), parent: null, text: null };
+          root.label = label(root.items);
+          let id = 1, frontier = [root];
+          const steps = [], all = { n0: root };
+          for (let t = 1; t <= 3; t++) {
+            const cands = [];
+            frontier.forEach((s, pi) => {
+              const ms = moves(s.items);
+              const picked = sampleK(ms, K[s.items.length], rngFor('P|' + s.key, seed));
+              s.children = picked.map(m => {
+                const c = { id: 'n' + (id++), depth: t, items: m.items, text: m.text, key: s.key + ' | ' + m.text, parent: s, parentIndex: pi };
+                c.label = label(c.items);
+                all[c.id] = c;
+                return c;
+              });
+              cands.push(...s.children);
+            });
+            for (const c of cands) {
+              const rng = rngFor('V|' + c.key, seed);
+              c.samples = [0, 1, 2].map(() => judge(c.items, rng));
+              c.value = c.samples.reduce((acc, s) => acc + VALUE[s.verdict], 0);
+              c.truth = solvable(c.items);
+            }
+            const order = cands.map((c, i) => [c, i]).sort((x, y) => (y[0].value - x[0].value) || (x[1] - y[1])).map(x => x[0]);
+            const kept = order.slice(0, b);
+            kept.forEach((c, r) => { c.kept = true; c.rank = r + 1; });
+            steps.push({ t, frontier, cands, kept });
+            frontier = kept;
+          }
+          const best = frontier[0];
+          const success = is24(best.items[0].v);
+          if (success) for (let p = best; p; p = p.parent) p.onPath = true;
+          return {
+            root, steps, best, success, answer: pretty(best.items[0].t), final: fmt(best.items[0].v), all,
+            calls: { propose: steps.reduce((a, s) => a + s.frontier.length, 0), value: steps.reduce((a, s) => a + s.cands.length, 0) * 3 }
+          };
+        }
+        function cot(nums, seed) {
+          let items = nums.map(n => leaf(Q(n)));
+          const rng = rngFor('C|' + nums.join(' '), seed);
+          const chain = [];
+          for (let t = 0; t < 3; t++) {
+            const m = sampleK(moves(items), 1, rng)[0];
+            items = m.items;
+            chain.push({ text: m.text, left: label(items), alive: solvable(items) });
+          }
+          return { chain, success: is24(items[0].v), answer: pretty(items[0].t), final: fmt(items[0].v) };
+        }
+        function firstMoves(nums) {
+          return moves(nums.map(n => leaf(Q(n)))).map(m => ({ text: m.text, left: label(m.items), alive: solvable(m.items) }));
+        }
+        return { Q, fmt, cmp, is24, apply, leaf, combine, label, solvable, solutions, simulate, cot, firstMoves, pretty, VALUE, K };
+      })();
+      /*LOGIC-END*/
+
+      /* ================= Tooltip ================= */
+      const tip = $('#tip');
+      function showTip(text, x, y) {
+        tip.textContent = text; tip.hidden = false;
+        const r = tip.getBoundingClientRect();
+        tip.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x + 12)) + 'px';
+        tip.style.top = Math.max(8, Math.min(innerHeight - r.height - 8, y + 14)) + 'px';
       }
-    }
-    return out;
-  }
-  // How likely the simulated LM is to write a given equation.
-  function weight(m) {
-    let w = m.r.d !== 1 ? 0.05 : m.r.n === 0 ? 0.08 : 1;
-    if ((m.op === '×' || m.op === '÷') && m.y.n === 1 && m.y.d === 1) w *= 0.4;
-    if (num(m.r) > 100) w *= 0.5;
-    if (m.r.d === 1 && [2, 3, 4, 6, 8, 12].includes(m.r.n)) w *= 1.5; // factors of 24 look promising to a person or an LM
-    if (m.items.length === 1 && is24(m.r)) w *= 8; // with two numbers left, the LM spots the winning operation
-    return w;
-  }
-  function hash(str) { let h = 2166136261 >>> 0; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-  function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-  const rngFor = (key, seed) => mulberry32(hash(key + '#' + seed));
-  // Weighted sampling without replacement (exponential race).
-  const sampleK = (list, k, rng) => list.map(m => ({ m, key: -Math.log(1 - rng()) / weight(m) }))
-    .sort((a, b) => a.key - b.key).slice(0, k).map(x => x.m);
-  const pick = (arr, rng) => arr[Math.floor(rng() * arr.length)];
-  const VALUE = { sure: 20, likely: 1, impossible: 0.001 };
-
-  // One sampled answer to the value prompt for the numbers left in a state.
-  function judge(items, rng) {
-    const nums = items.map(i => i.v).sort(cmp);
-    const lab = nums.map(fmt).join(' ');
-    if (items.length === 1) {
-      return is24(items[0].v) ? { verdict: 'sure', text: lab + ' = 24' } : { verdict: 'impossible', text: lab + ' ≠ 24' };
-    }
-    if (items.length === 2) {
-      const A = leaf(nums[1]), B = leaf(nums[0]);
-      const tries = [combine('+', A, B), combine('−', A, B), combine('×', A, B), combine('÷', A, B)];
-      if (cmp(nums[0], nums[1]) !== 0) tries.push(combine('÷', B, A));
-      const parts = [];
-      let hit = false;
-      for (const r of tries.filter(Boolean)) { parts.push(pretty(r.t) + ' = ' + fmt(r.v)); if (is24(r.v)) { hit = true; break; } }
-      return { verdict: hit ? 'sure' : 'impossible', text: parts.join(', ') + (hit ? '' : '. No way to reach 24') };
-    }
-    const leaves = nums.map(leaf);
-    const sum = combine('+', combine('+', leaves[0], leaves[1]), leaves[2]);
-    const sumText = pretty(sum.t) + ' = ' + fmt(sum.v);
-    if (is24(sum.v)) return { verdict: 'sure', text: sumText };
-    const exprs = allExprs(leaves);
-    const pool = exprs.filter(x => !is24(x.v) && x.v.d === 1 && x.v.n > 0 && !x.frac && pretty(x.t) !== pretty(sum.t));
-    const trial = pool.length ? pick(pool, rng) : null;
-    const tried = [sumText].concat(trial ? [pretty(trial.t) + ' = ' + fmt(trial.v)] : []).join(', ');
-    const truth = solvable(leaves);
-    if (truth) {
-      const hits = exprs.filter(x => is24(x.v));
-      const nice = hits.filter(h => !h.frac);
-      if (rng() < (nice.length ? 0.45 : 0.15)) {
-        const h = pick(nice.length ? nice : hits, rng);
-        return { verdict: 'sure', text: sumText + ', ' + pretty(h.t) + ' = 24' };
-      }
-    } else if (rng() < 0.05) {
-      // an arithmetic slip: the LM "finds" 24 with an expression that is really a near miss (22–26)
-      const onlyPlus = t => !t.op || (t.op === '+' && onlyPlus(t.l) && onlyPlus(t.r));
-      const near = pool.filter(x => Math.abs(num(x.v) - 24) <= 2 && !onlyPlus(x.t))[0];
-      if (near) return { verdict: 'sure', text: sumText + ', ' + pretty(near.t) + ' = 24' };
-    }
-    const maxV = Math.max(...exprs.map(x => num(x.v)));
-    const tooSmall = maxV < 24;
-    const allBig = nums.every(v => num(v) >= 10);
-    const hasHuge = nums.some(v => num(v) > 48);
-    const pImpossible = truth ? 0.2 : (tooSmall || allBig || hasHuge ? 0.92 : 0.6);
-    if (rng() < pImpossible) {
-      const why = tooSmall ? 'These numbers are too small to reach 24' : allBig ? 'These numbers are too big to reach 24' : hasHuge ? fmt(nums[2]) + ' is too big to bring back down to 24' : 'There is no way to reach 24 with these';
-      return { verdict: 'impossible', text: tried + '. ' + why };
-    }
-    return { verdict: 'likely', text: tried + '. I cannot reach 24 yet, but the numbers are in a workable range' };
-  }
-
-  const K = { 4: 8, 3: 6, 2: 3 };
-  function simulate(nums, b, seed) {
-    const root = { id: 'n0', depth: 0, items: nums.map(n => leaf(Q(n))), key: nums.join(' '), parent: null, text: null };
-    root.label = label(root.items);
-    let id = 1, frontier = [root];
-    const steps = [], all = { n0: root };
-    for (let t = 1; t <= 3; t++) {
-      const cands = [];
-      frontier.forEach((s, pi) => {
-        const ms = moves(s.items);
-        const picked = sampleK(ms, K[s.items.length], rngFor('P|' + s.key, seed));
-        s.children = picked.map(m => {
-          const c = { id: 'n' + (id++), depth: t, items: m.items, text: m.text, key: s.key + ' | ' + m.text, parent: s, parentIndex: pi };
-          c.label = label(c.items);
-          all[c.id] = c;
-          return c;
-        });
-        cands.push(...s.children);
+      document.addEventListener('pointermove', e => {
+        const t = e.target.closest('[data-tip]');
+        if (t) showTip(t.dataset.tip, e.clientX, e.clientY); else tip.hidden = true;
       });
-      for (const c of cands) {
-        const rng = rngFor('V|' + c.key, seed);
-        c.samples = [0, 1, 2].map(() => judge(c.items, rng));
-        c.value = c.samples.reduce((acc, s) => acc + VALUE[s.verdict], 0);
-        c.truth = solvable(c.items);
-      }
-      const order = cands.map((c, i) => [c, i]).sort((x, y) => (y[0].value - x[0].value) || (x[1] - y[1])).map(x => x[0]);
-      const kept = order.slice(0, b);
-      kept.forEach((c, r) => { c.kept = true; c.rank = r + 1; });
-      steps.push({ t, frontier, cands, kept });
-      frontier = kept;
-    }
-    const best = frontier[0];
-    const success = is24(best.items[0].v);
-    if (success) for (let p = best; p; p = p.parent) p.onPath = true;
-    return { root, steps, best, success, answer: pretty(best.items[0].t), final: fmt(best.items[0].v), all,
-      calls: { propose: steps.reduce((a, s) => a + s.frontier.length, 0), value: steps.reduce((a, s) => a + s.cands.length, 0) * 3 } };
-  }
-  function cot(nums, seed) {
-    let items = nums.map(n => leaf(Q(n)));
-    const rng = rngFor('C|' + nums.join(' '), seed);
-    const chain = [];
-    for (let t = 0; t < 3; t++) {
-      const m = sampleK(moves(items), 1, rng)[0];
-      items = m.items;
-      chain.push({ text: m.text, left: label(items), alive: solvable(items) });
-    }
-    return { chain, success: is24(items[0].v), answer: pretty(items[0].t), final: fmt(items[0].v) };
-  }
-  function firstMoves(nums) {
-    return moves(nums.map(n => leaf(Q(n)))).map(m => ({ text: m.text, left: label(m.items), alive: solvable(m.items) }));
-  }
-  return { Q, fmt, cmp, is24, apply, leaf, combine, label, solvable, solutions, simulate, cot, firstMoves, pretty, VALUE, K };
-})();
-/*LOGIC-END*/
-
-/* ================= Tooltip ================= */
-const tip = $('#tip');
-function showTip(text, x, y) {
-  tip.textContent = text; tip.hidden = false;
-  const r = tip.getBoundingClientRect();
-  tip.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x + 12)) + 'px';
-  tip.style.top = Math.max(8, Math.min(innerHeight - r.height - 8, y + 14)) + 'px';
-}
-document.addEventListener('pointermove', e => {
-  const t = e.target.closest('[data-tip]');
-  if (t) showTip(t.dataset.tip, e.clientX, e.clientY); else tip.hidden = true;
-});
-document.addEventListener('focusin', e => {
-  const t = e.target.closest('[data-tip]');
-  if (t) { const r = t.getBoundingClientRect(); showTip(t.dataset.tip, r.left + r.width / 2, r.bottom); }
-});
-document.addEventListener('focusout', () => { tip.hidden = true; });
-
-/* ================= Navigation ================= */
-const scenes = $$('.scene');
-const builds = {};      // scene id -> { next(): boolean, reset(): void }
-const onEnter = {};     // scene id -> fn
-let cur = 0;
-const tabs = $('#tabs');
-scenes.forEach((s, i) => {
-  const b = document.createElement('button');
-  b.className = 'tab'; b.setAttribute('role', 'tab'); b.id = 'tab-' + s.id;
-  b.innerHTML = '<span class="n">' + (i + 1) + '</span>' + esc(s.dataset.name);
-  b.addEventListener('click', () => show(i));
-  tabs.appendChild(b);
-  const foot = document.createElement('div');
-  foot.className = 'scene-foot';
-  const prev = scenes[i - 1], next = scenes[i + 1];
-  foot.innerHTML = (prev ? '<button class="prev"><small>← Previous</small>' + esc(prev.dataset.name) + '</button>' : '<span class="keyhint"><kbd>←</kbd> <kbd>→</kbd> or a presentation clicker moves through the sections</span>') +
-    (next ? '<button class="next"><small>Next →</small>' + esc(next.dataset.name) + '</button>' : '');
-  s.appendChild(foot);
-  foot.querySelector('.prev')?.addEventListener('click', () => show(i - 1));
-  foot.querySelector('.next')?.addEventListener('click', () => show(i + 1));
-});
-function show(i) {
-  i = Math.max(0, Math.min(scenes.length - 1, i));
-  const forward = i > cur;
-  scenes.forEach((s, k) => { s.hidden = k !== i; });
-  $$('.tab', tabs).forEach((t, k) => t.setAttribute('aria-selected', String(k === i)));
-  $$('.tab', tabs)[i].scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  const id = scenes[i].id;
-  if (forward && builds[id]) builds[id].reset();
-  cur = i;
-  try { history.replaceState(null, '', '#' + id); } catch (e) { /* ignore */ }
-  window.scrollTo({ top: 0 });
-  onEnter[id]?.();
-}
-document.addEventListener('keydown', e => {
-  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
-  if (e.altKey || e.metaKey || e.ctrlKey) return;
-  if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-    e.preventDefault();
-    const b = builds[scenes[cur].id];
-    if (!e.shiftKey && b && b.next()) return;
-    show(cur + 1);
-  } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-    e.preventDefault(); show(cur - 1);
-  }
-});
-// text size for projectors
-const ZOOMS = [0.85, 0.92, 1, 1.1, 1.2, 1.32, 1.45];
-let zi = ZOOMS.indexOf(Number(store.get('tot-zoom'))); if (zi < 0) zi = 2;
-function setZoom() { document.documentElement.style.setProperty('--zoom', ZOOMS[zi]); $('#zoomVal').textContent = Math.round(ZOOMS[zi] * 100) + '%'; store.set('tot-zoom', ZOOMS[zi]); }
-$('#zoomIn').addEventListener('click', () => { zi = Math.min(ZOOMS.length - 1, zi + 1); setZoom(); });
-$('#zoomOut').addEventListener('click', () => { zi = Math.max(0, zi - 1); setZoom(); });
-setZoom();
-
-/* ================= Page 1 · Game of 24 search ================= */
-const G24_PRESETS = [[4, 9, 10, 13], [2, 8, 8, 14], [1, 2, 7, 7], [3, 4, 6, 8], [5, 5, 5, 1]];
-const SEED0 = 577; // run 1 = seed 578, which reproduces the paper's example path
-const G = { nums: [4, 9, 10, 13], b: 5, seed: SEED0 + 1, phase: 0, run: null, sel: null, follow: true, showPruned: true, timer: null, cotSeed: 1, cotTally: [0, 0] };
-const PH_LAST = 10;
-const phaseInfo = ph => ph === 0 ? { t: 0, stage: 'ready' } : ph === PH_LAST ? { t: 3, stage: 'out' } : { t: Math.floor((ph - 1) / 3) + 1, stage: ['propose', 'evaluate', 'select'][(ph - 1) % 3] };
-const colStatus = t => { const base = 3 * (t - 1); return G.phase <= base ? 'future' : G.phase === base + 1 ? 'proposed' : G.phase === base + 2 ? 'evaluated' : 'selected'; };
-const fmtVal = v => v >= 1 ? v.toFixed(1) : v.toFixed(3);
-const VL = { sure: 'S', likely: 'L', impossible: 'I' };
-
-function g24Compute() { G.run = T24.simulate(G.nums, G.b, G.seed); }
-function rankBadge(n, path) { return '<span class="rank' + (path ? ' path' : '') + '">' + n + '</span>'; }
-function rowHTML(c, i, status) {
-  const ev = status === 'evaluated' || status === 'selected';
-  const sel = status === 'selected';
-  const showPath = G.phase === PH_LAST && c.onPath;
-  const cls = ['row', sel ? (c.kept ? 'kept' : 'pruned') : '', showPath ? 'onpath' : '', G.sel === c.id ? 'sel' : ''].join(' ');
-  const pills = ev ? '<span class="pills">' + c.samples.map(s => '<span class="pill ' + s.verdict + '" title="' + s.verdict + '">' + VL[s.verdict] + '</span>').join('') + '</span><span class="score">' + fmtVal(c.value) + '</span>' : '';
-  return '<button class="' + cls + '" data-id="' + c.id + '" style="--i:' + i + '"><span class="rk">' + (sel && c.kept ? rankBadge(c.rank, showPath) : '') + '</span>' +
-    '<span class="eq">' + esc(c.text) + '</span><span class="vals">' + pills + '</span><span class="lf">left: ' + esc(c.label) + '</span></button>';
-}
-function renderTree() {
-  const r = G.run;
-  let html = '';
-  for (let t = 1; t <= 3; t++) {
-    const st = r.steps[t - 1], status = colStatus(t);
-    const n = st.cands.length, k = st.kept.length;
-    const cnt = status === 'future' ? '' : status === 'proposed' ? n + ' proposed' : status === 'evaluated' ? n + ' rated' : k + ' kept · ' + (n - k) + ' pruned';
-    const sub = ['', 'first equation · from the input', 'second equation · from each kept state', 'last equation · reach 24?'][t];
-    const live = phaseInfo(G.phase).t === t && G.phase !== PH_LAST && G.phase !== 0;
-    html += '<div class="col' + (live ? ' live' : '') + '"><div class="col-head"><div class="ct"><h3>Step ' + t + '</h3><span class="cnt">' + cnt + '</span></div><span class="sub">' + sub + '</span></div><div class="col-body">';
-    if (status === 'future') {
-      html += '<div class="ghost">' + (t === 1 ? 'The LM will propose equations that use two of <span class="mono">' + esc(r.root.label) + '</span>.' : 'Each state kept after step ' + (t - 1) + ' will get its own proposals.') + '</div>';
-    } else {
-      let i = 0;
-      st.frontier.forEach(p => {
-        html += '<div class="grp-head">' + (t === 1 ? 'from the input ' + esc(p.label) : 'from ' + rankBadge(p.rank, G.phase === PH_LAST && p.onPath) + ' ' + esc(p.label)) + '</div>';
-        let hidden = 0;
-        p.children.forEach(c => {
-          if (status === 'selected' && !c.kept && !G.showPruned) { hidden++; return; }
-          html += rowHTML(c, i++, status);
-        });
-        if (hidden) html += '<div class="grp-more">+ ' + hidden + ' pruned</div>';
+      document.addEventListener('focusin', e => {
+        const t = e.target.closest('[data-tip]');
+        if (t) { const r = t.getBoundingClientRect(); showTip(t.dataset.tip, r.left + r.width / 2, r.bottom); }
       });
-    }
-    html += '</div></div>';
-  }
-  // output column
-  html += '<div class="col' + (G.phase === PH_LAST ? ' live' : '') + '"><div class="col-head"><div class="ct"><h3>Output</h3></div><span class="sub">answer from the best final state</span></div><div class="col-body">';
-  if (G.phase < PH_LAST) {
-    html += '<div class="ghost">The best state after step 3 is turned into the full equation.</div>';
-  } else {
-    const path = []; for (let p = r.best; p.parent; p = p.parent) path.unshift(p.text);
-    html += '<div class="out-card"><div class="out-big ' + (r.success ? 'ok' : 'bad') + '">' + (r.success ? '24 ✓' : esc(r.final) + ' ✗') + '</div>' +
-      '<div class="out-eq">' + esc(r.answer) + ' = ' + esc(r.final) + '</div><ol class="out-path">' + path.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
-      '<p class="out-meta">LM calls in this run: ' + r.calls.propose + ' propose, ' + r.calls.value + ' value samples, 1 final answer.</p></div>';
-  }
-  html += '</div></div>';
-  $('#g24Tree').innerHTML = html;
-}
-function renderNarr() {
-  const r = G.run, { t, stage } = phaseInfo(G.phase), st = r.steps[t - 1];
-  let ph = '', txt = '';
-  if (stage === 'ready') { ph = 'ready'; txt = 'Input <b class="mono">' + esc(r.root.label) + '</b>. The tree will be 3 steps deep, one equation per step, keeping the best <b>b = ' + G.b + '</b> states at each step. Press <kbd>→</kbd> or Next step.'; }
-  else if (stage === 'propose') { ph = 'step ' + t + ' · propose'; txt = t === 1 ? '<b>One LM call</b> with the propose prompt lists ' + st.cands.length + ' possible first equations.' : 'Each of the <b>' + st.frontier.length + ' kept states</b> gets its own propose call: ' + st.cands.length + ' new thoughts in total.'; }
-  else if (stage === 'evaluate') { ph = 'step ' + t + ' · evaluate'; txt = t === 3 ? 'For the last step the check is simple: <b>is the number left exactly 24?</b> (3 samples each, all agree.)' : t === 2 ? 'With two numbers left, the LM can try every operation, so its ratings are reliable: <b>sure</b> or <b>impossible</b>.' : 'For each thought the LM is asked <b>3 times</b> whether the numbers left can still reach 24. sure = 20, likely = 1, impossible = 0.001, summed.'; }
-  else if (stage === 'select') { ph = 'step ' + t + ' · select'; txt = 'Keep the <b>' + st.kept.length + '</b> highest-scoring states. The other <b>' + (st.cands.length - st.kept.length) + '</b> are pruned and never expanded.'; }
-  else { ph = 'answer'; txt = r.success ? '<span class="ok">Solved.</span> The best final state is 24, so the LM writes out the equation: <b class="mono">' + esc(r.answer) + ' = 24</b>.' : '<span class="bad">Not solved.</span> No kept state reached 24; the best guess is <b class="mono">' + esc(r.answer) + ' = ' + esc(r.final) + '</b>. ' + (G.b < 3 ? 'With so few states kept there is no fallback: one weak proposal or rating along the way is fatal. Try b = 5.' : 'Even b = ' + G.b + ' can miss when the proposals and ratings are noisy. Try re-sampling the LM.'); }
-  $('#g24Narr').innerHTML = '<span class="ph">' + ph + '</span><span>' + txt + '</span>';
-}
-function renderAlgo() {
-  const { t, stage } = phaseInfo(G.phase);
-  const line = { ready: 0, propose: 2, evaluate: 3, select: 4, out: 5 }[stage];
-  $$('#algo li').forEach(li => li.classList.toggle('on', Number(li.dataset.l) === line || (line >= 2 && line <= 4 && li.dataset.l === '1')));
-  $('#algoState').textContent = 't = ' + (t || '–') + ' of 3 · b = ' + G.b + ' · k = ' + T24.K[4] + ', ' + T24.K[3] + ', ' + T24.K[2] + ' thoughts per proposal';
-}
-const PROPOSE_PROMPT = 'Use + − × ÷ on two of the numbers to suggest possible next steps.\nInput: 2 8 8 14\nPossible next steps:\n2 + 8 = 10 (left: 8 10 14)\n8 ÷ 2 = 4 (left: 4 8 14)\n14 − 8 = 6 (left: 2 6 8)\n…\n';
-const VALUE_PROMPT = 'Evaluate if the given numbers can reach 24 (sure / likely / impossible)\n10 14: 10 + 14 = 24. sure\n4 4 10: (10 − 4) × 4 = 24. sure\n11 12: 11 + 12 = 23, 12 − 11 = 1, 11 × 12 = 132. impossible\n5 7 8: 5 + 7 + 8 = 20, (8 − 5) × 7 = 21. I cannot reach 24 yet, but the numbers are in a workable range. likely\n1 3 3: (1 + 3) × 3 = 12. These numbers are too small. impossible\n…\n';
-function renderInsp() {
-  const pane = $('#paneInsp');
-  const c = G.sel && G.run.all[G.sel];
-  if (!c) { pane.innerHTML = '<p class="note">Click any thought in the tree to see the prompt the LM received and what it replied. During playback this panel follows the newest step until you click something.</p>'; return; }
-  const status = colStatus(c.depth);
-  const path = []; for (let p = c; p.parent; p = p.parent) path.unshift(p);
-  const par = c.parent;
-  let h = '<div class="insp-sec"><h4>Path to this state</h4><ol class="pathlist"><li>' + esc(G.run.root.label) + ' (input)</li>' + path.map(p => '<li class="' + (p === c ? 'cur' : '') + '">' + esc(p.text) + ' → ' + esc(p.label) + '</li>').join('') + '</ol></div>';
-  h += '<div class="insp-sec"><h4>Propose call</h4><pre class="prompt">' + esc(PROPOSE_PROMPT) + '<b>Input: ' + esc(par.label) + '\nPossible next steps:</b></pre><div class="reply">' +
-    par.children.map(x => '<div class="ln' + (x === c ? ' hi' : '') + '"><span>' + esc(x.text) + ' (left: ' + esc(x.label) + ')</span></div>').join('') + '</div></div>';
-  if (status === 'evaluated' || status === 'selected') {
-    const vs = c.samples.map(s => T24.VALUE[s.verdict]);
-    h += '<div class="insp-sec"><h4>Value calls · 3 samples</h4><pre class="prompt">' + esc(c.items.length === 1 ? 'Is this the answer 24? (sure / impossible)\n' : VALUE_PROMPT) + '<b>' + esc(c.label) + ':</b></pre><div class="reply">' +
-      c.samples.map(s => '<div class="ln"><span>' + esc(s.text) + '.</span><span class="pill wide ' + s.verdict + '">' + s.verdict + '</span></div>').join('') + '</div>' +
-      '<p class="mono" style="font-size:.78rem">value = ' + vs.map(v => v === 0.001 ? '0.001' : v).join(' + ') + ' = ' + fmtVal(c.value) + (status === 'selected' ? (c.kept ? ' · kept, rank ' + c.rank : ' · pruned') : '') + '</p></div>';
-    const lmSays = c.samples.filter(s => s.verdict !== 'impossible').length >= 2;
-    const wrong = lmSays !== c.truth;
-    let truthTxt = c.truth ? '24 is reachable from ' + c.label + (c.items.length > 1 ? ', e.g. ' + T24.solutions(c.items)[0].s + ' = 24' : '') + '.' : '24 cannot be reached from ' + c.label + '.';
-    h += '<div class="truth' + (wrong ? ' warn' : '') + '"><b>Exact check (not shown to the LM):</b> ' + esc(truthTxt) + (wrong ? ' The LM\'s ratings got this one wrong, which happens in the paper too.' : '') + '</div>';
-  } else {
-    h += '<p class="note">Not rated yet. Advance to the evaluate step.</p>';
-  }
-  pane.innerHTML = h;
-}
-function setSideTab(which) {
-  $('#tabAlgo').setAttribute('aria-selected', String(which === 'algo'));
-  $('#tabInsp').setAttribute('aria-selected', String(which === 'insp'));
-  $('#paneAlgo').hidden = which !== 'algo';
-  $('#paneInsp').hidden = which !== 'insp';
-}
-$('#tabAlgo').addEventListener('click', () => setSideTab('algo'));
-$('#tabInsp').addEventListener('click', () => setSideTab('insp'));
-function autoFollow() {
-  if (!G.follow) return;
-  const { t, stage } = phaseInfo(G.phase);
-  if (stage === 'ready') { G.sel = null; return; }
-  const st = G.run.steps[t - 1];
-  G.sel = stage === 'out' ? G.run.best.id : stage === 'select' ? st.kept[0].id : st.cands[0].id;
-}
-function renderG24() {
-  autoFollow();
-  renderTree(); renderNarr(); renderAlgo(); renderInsp();
-  $('#g24Next').disabled = G.phase >= PH_LAST;
-  $('#g24Play').textContent = G.timer ? 'Pause' : 'Play all';
-  $('#g24SeedN').textContent = 'run ' + (G.seed - SEED0);
-  $$('#g24B button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.b) === G.b)));
-  $$('#g24Presets .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.n === G.nums.join(' '))));
-}
-function renderLower() {
-  const fm = T24.firstMoves(G.nums), alive = fm.filter(m => m.alive).length;
-  const lab = esc(T24.label(G.nums.map(n => T24.leaf(T24.Q(n)))));
-  $('#fsCount').innerHTML = '<b>' + alive + ' of ' + fm.length + '</b><span>first equations from ' + lab + ' can still reach 24</span>';
-  $('#fmText').innerHTML = 'Green tiles keep 24 reachable; grey tiles are dead ends however well the rest goes. A chain-of-thought sample picks one tile and never reconsiders. ToT proposes several, rates them, and keeps the best.';
-  $('#fmTiles').innerHTML = fm.map(m => '<span class="' + (m.alive ? 'alive' : '') + '" data-tip="' + esc(m.text + ' → left: ' + m.left + (m.alive ? ' · 24 still reachable' : ' · dead end')) + '">' + esc(m.text) + '</span>').join('');
-  renderCot();
-}
-function renderCot() {
-  const c = T24.cot(G.nums, G.cotSeed);
-  $('#cotChain').innerHTML = c.chain.map((s, i) => '<li><span>' + (i + 1) + '. ' + esc(s.text) + ' (left: ' + esc(s.left) + ')</span>' + (i < 2 ? '<span class="st ' + (s.alive ? 'alive' : 'dead') + '">' + (s.alive ? '24 still reachable' : 'dead end') + '</span>' : '') + '</li>').join('');
-  $('#cotRes').innerHTML = c.success ? '<span class="pill wide sure">solved</span><span class="mono">' + esc(c.answer) + ' = 24</span>' : '<span class="pill wide impossible">failed</span><span class="mono">' + esc(c.answer) + ' = ' + esc(c.final) + '</span>' + (c.chain[0].alive ? '' : '<span class="note">doomed by the first step</span>');
-  return c;
-}
-function g24Stop() { clearInterval(G.timer); G.timer = null; }
-function g24Next() { if (G.phase >= PH_LAST) return false; G.phase++; renderG24(); if (G.phase >= PH_LAST) g24Stop(); return true; }
-function g24Reset() { g24Stop(); G.phase = 0; G.follow = true; G.sel = null; setSideTab('algo'); renderG24(); }
-function g24SetNums(nums) {
-  G.nums = nums; G.cotSeed = 1; G.cotTally = [0, 0]; $('#cotTally').textContent = '';
-  g24Compute(); G.sel = null; G.follow = true; renderG24(); renderLower();
-}
-$('#g24Presets').innerHTML = G24_PRESETS.map(p => '<button class="chip" data-n="' + p.join(' ') + '">' + p.join(' ') + '</button>').join('');
-$('#g24Presets').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) g24SetNums(b.dataset.n.split(' ').map(Number)); });
-$('#g24Form').addEventListener('submit', e => {
-  e.preventDefault();
-  const v = $('#g24Input').value.trim().split(/[\s,]+/).map(Number);
-  if (v.length !== 4 || v.some(x => !Number.isInteger(x) || x < 1 || x > 99)) { $('#g24Narr').innerHTML = '<span class="ph">input</span><span>Enter four whole numbers from 1 to 99, separated by spaces, such as <span class="mono">1 4 8 8</span>.</span>'; return; }
-  g24SetNums(v);
-});
-$('#g24B').innerHTML = [1, 2, 3, 4, 5].map(b => '<button data-b="' + b + '" aria-pressed="false">' + b + '</button>').join('');
-$('#g24B').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; G.b = Number(b.dataset.b); g24Compute(); if (G.sel && !G.run.all[G.sel]) G.sel = null; renderG24(); });
-$('#g24Seed').addEventListener('click', () => { G.seed++; g24Compute(); G.sel = G.follow ? null : (G.run.all[G.sel] ? G.sel : null); renderG24(); });
-$('#g24Next').addEventListener('click', () => g24Next());
-$('#g24Reset').addEventListener('click', g24Reset);
-$('#g24Play').addEventListener('click', () => {
-  if (G.timer) { g24Stop(); renderG24(); return; }
-  if (G.phase >= PH_LAST) G.phase = 0;
-  G.timer = setInterval(() => { if (!g24Next()) g24Stop(); }, reduceMotion ? 300 : 1100);
-  g24Next();
-});
-$('#g24ShowPruned').addEventListener('change', e => { G.showPruned = e.target.checked; renderTree(); });
-$('#g24Tree').addEventListener('click', e => {
-  const b = e.target.closest('.row'); if (!b) return;
-  G.sel = b.dataset.id; G.follow = false; setSideTab('insp'); renderTree(); renderInsp();
-});
-$('#cotAgain').addEventListener('click', () => {
-  G.cotSeed++;
-  const c = renderCot();
-  G.cotTally[1]++; if (c.success) G.cotTally[0]++;
-  $('#cotTally').textContent = 'This session: ' + G.cotTally[0] + ' of ' + G.cotTally[1] + ' new chains reached 24.';
-});
-builds.game24 = { next: g24Next, reset: g24Reset };
-g24Compute(); renderG24(); renderLower();
+      document.addEventListener('focusout', () => { tip.hidden = true; });
 
-/* ================= Start ================= */
-const startId = (location.hash || '').slice(1);
-const startIdx = scenes.findIndex(s => s.id === startId);
-cur = -1;
-show(startIdx >= 0 ? startIdx : 0);
-})();
-</script>
+      /* ================= Navigation ================= */
+      const scenes = $$('.scene');
+      const builds = {};      // scene id -> { next(): boolean, reset(): void }
+      const onEnter = {};     // scene id -> fn
+      let cur = 0;
+      const tabs = $('#tabs');
+      scenes.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.className = 'tab'; b.setAttribute('role', 'tab'); b.id = 'tab-' + s.id;
+        b.innerHTML = '<span class="n">' + (i + 1) + '</span>' + esc(s.dataset.name);
+        b.addEventListener('click', () => show(i));
+        tabs.appendChild(b);
+        const foot = document.createElement('div');
+        foot.className = 'scene-foot';
+        const prev = scenes[i - 1], next = scenes[i + 1];
+        foot.innerHTML = (prev ? '<button class="prev"><small>← Previous</small>' + esc(prev.dataset.name) + '</button>' : '<span class="keyhint"><kbd>←</kbd> <kbd>→</kbd> or a presentation clicker moves through the sections</span>') +
+          (next ? '<button class="next"><small>Next →</small>' + esc(next.dataset.name) + '</button>' : '');
+        s.appendChild(foot);
+        foot.querySelector('.prev')?.addEventListener('click', () => show(i - 1));
+        foot.querySelector('.next')?.addEventListener('click', () => show(i + 1));
+      });
+      function show(i) {
+        i = Math.max(0, Math.min(scenes.length - 1, i));
+        const forward = i > cur;
+        scenes.forEach((s, k) => { s.hidden = k !== i; });
+        $$('.tab', tabs).forEach((t, k) => t.setAttribute('aria-selected', String(k === i)));
+        $$('.tab', tabs)[i].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        const id = scenes[i].id;
+        if (forward && builds[id]) builds[id].reset();
+        cur = i;
+        try { history.replaceState(null, '', '#' + id); } catch (e) { /* ignore */ }
+        window.scrollTo({ top: 0 });
+        onEnter[id]?.();
+      }
+      document.addEventListener('keydown', e => {
+        if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+        if (e.altKey || e.metaKey || e.ctrlKey) return;
+        if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+          e.preventDefault();
+          const b = builds[scenes[cur].id];
+          if (!e.shiftKey && b && b.next()) return;
+          show(cur + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault(); show(cur - 1);
+        }
+      });
+      // text size for projectors
+      const ZOOMS = [0.85, 0.92, 1, 1.1, 1.2, 1.32, 1.45];
+      let zi = ZOOMS.indexOf(Number(store.get('tot-zoom'))); if (zi < 0) zi = 2;
+      function setZoom() { document.documentElement.style.setProperty('--zoom', ZOOMS[zi]); $('#zoomVal').textContent = Math.round(ZOOMS[zi] * 100) + '%'; store.set('tot-zoom', ZOOMS[zi]); }
+      $('#zoomIn').addEventListener('click', () => { zi = Math.min(ZOOMS.length - 1, zi + 1); setZoom(); });
+      $('#zoomOut').addEventListener('click', () => { zi = Math.max(0, zi - 1); setZoom(); });
+      setZoom();
+
+      /* ================= Page 1 · Game of 24 search ================= */
+      const G24_PRESETS = [[4, 9, 10, 13], [2, 8, 8, 14], [1, 2, 7, 7], [3, 4, 6, 8], [5, 5, 5, 1]];
+      const SEED0 = 577; // run 1 = seed 578, which reproduces the paper's example path
+      const G = { nums: [4, 9, 10, 13], b: 5, seed: SEED0 + 1, phase: 0, run: null, sel: null, follow: true, showPruned: true, timer: null, cotSeed: 1, cotTally: [0, 0] };
+      const PH_LAST = 10;
+      const phaseInfo = ph => ph === 0 ? { t: 0, stage: 'ready' } : ph === PH_LAST ? { t: 3, stage: 'out' } : { t: Math.floor((ph - 1) / 3) + 1, stage: ['propose', 'evaluate', 'select'][(ph - 1) % 3] };
+      const colStatus = t => { const base = 3 * (t - 1); return G.phase <= base ? 'future' : G.phase === base + 1 ? 'proposed' : G.phase === base + 2 ? 'evaluated' : 'selected'; };
+      const fmtVal = v => v >= 1 ? v.toFixed(1) : v.toFixed(3);
+      const VL = { sure: 'S', likely: 'L', impossible: 'I' };
+
+      function g24Compute() { G.run = T24.simulate(G.nums, G.b, G.seed); }
+      function rankBadge(n, path) { return '<span class="rank' + (path ? ' path' : '') + '">' + n + '</span>'; }
+      function rowHTML(c, i, status) {
+        const ev = status === 'evaluated' || status === 'selected';
+        const sel = status === 'selected';
+        const showPath = G.phase === PH_LAST && c.onPath;
+        const cls = ['row', sel ? (c.kept ? 'kept' : 'pruned') : '', showPath ? 'onpath' : '', G.sel === c.id ? 'sel' : ''].join(' ');
+        const pills = ev ? '<span class="pills">' + c.samples.map(s => '<span class="pill ' + s.verdict + '" title="' + s.verdict + '">' + VL[s.verdict] + '</span>').join('') + '</span><span class="score">' + fmtVal(c.value) + '</span>' : '';
+        return '<button class="' + cls + '" data-id="' + c.id + '" style="--i:' + i + '"><span class="rk">' + (sel && c.kept ? rankBadge(c.rank, showPath) : '') + '</span>' +
+          '<span class="eq">' + esc(c.text) + '</span><span class="vals">' + pills + '</span><span class="lf">left: ' + esc(c.label) + '</span></button>';
+      }
+      function renderTree() {
+        const r = G.run;
+        let html = '';
+        for (let t = 1; t <= 3; t++) {
+          const st = r.steps[t - 1], status = colStatus(t);
+          const n = st.cands.length, k = st.kept.length;
+          const cnt = status === 'future' ? '' : status === 'proposed' ? n + ' proposed' : status === 'evaluated' ? n + ' rated' : k + ' kept · ' + (n - k) + ' pruned';
+          const sub = ['', 'first equation · from the input', 'second equation · from each kept state', 'last equation · reach 24?'][t];
+          const live = phaseInfo(G.phase).t === t && G.phase !== PH_LAST && G.phase !== 0;
+          html += '<div class="col' + (live ? ' live' : '') + '"><div class="col-head"><div class="ct"><h3>Step ' + t + '</h3><span class="cnt">' + cnt + '</span></div><span class="sub">' + sub + '</span></div><div class="col-body">';
+          if (status === 'future') {
+            html += '<div class="ghost">' + (t === 1 ? 'The LM will propose equations that use two of <span class="mono">' + esc(r.root.label) + '</span>.' : 'Each state kept after step ' + (t - 1) + ' will get its own proposals.') + '</div>';
+          } else {
+            let i = 0;
+            st.frontier.forEach(p => {
+              html += '<div class="grp-head">' + (t === 1 ? 'from the input ' + esc(p.label) : 'from ' + rankBadge(p.rank, G.phase === PH_LAST && p.onPath) + ' ' + esc(p.label)) + '</div>';
+              let hidden = 0;
+              p.children.forEach(c => {
+                if (status === 'selected' && !c.kept && !G.showPruned) { hidden++; return; }
+                html += rowHTML(c, i++, status);
+              });
+              if (hidden) html += '<div class="grp-more">+ ' + hidden + ' pruned</div>';
+            });
+          }
+          html += '</div></div>';
+        }
+        // output column
+        html += '<div class="col' + (G.phase === PH_LAST ? ' live' : '') + '"><div class="col-head"><div class="ct"><h3>Output</h3></div><span class="sub">answer from the best final state</span></div><div class="col-body">';
+        if (G.phase < PH_LAST) {
+          html += '<div class="ghost">The best state after step 3 is turned into the full equation.</div>';
+        } else {
+          const path = []; for (let p = r.best; p.parent; p = p.parent) path.unshift(p.text);
+          html += '<div class="out-card"><div class="out-big ' + (r.success ? 'ok' : 'bad') + '">' + (r.success ? '24 ✓' : esc(r.final) + ' ✗') + '</div>' +
+            '<div class="out-eq">' + esc(r.answer) + ' = ' + esc(r.final) + '</div><ol class="out-path">' + path.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol>' +
+            '<p class="out-meta">LM calls in this run: ' + r.calls.propose + ' propose, ' + r.calls.value + ' value samples, 1 final answer.</p></div>';
+        }
+        html += '</div></div>';
+        $('#g24Tree').innerHTML = html;
+      }
+      function renderNarr() {
+        const r = G.run, { t, stage } = phaseInfo(G.phase), st = r.steps[t - 1];
+        let ph = '', txt = '';
+        if (stage === 'ready') { ph = 'ready'; txt = 'Input <b class="mono">' + esc(r.root.label) + '</b>. The tree will be 3 steps deep, one equation per step, keeping the best <b>b = ' + G.b + '</b> states at each step. Press <kbd>→</kbd> or Next step.'; }
+        else if (stage === 'propose') { ph = 'step ' + t + ' · propose'; txt = t === 1 ? '<b>One LM call</b> with the propose prompt lists ' + st.cands.length + ' possible first equations.' : 'Each of the <b>' + st.frontier.length + ' kept states</b> gets its own propose call: ' + st.cands.length + ' new thoughts in total.'; }
+        else if (stage === 'evaluate') { ph = 'step ' + t + ' · evaluate'; txt = t === 3 ? 'For the last step the check is simple: <b>is the number left exactly 24?</b> (3 samples each, all agree.)' : t === 2 ? 'With two numbers left, the LM can try every operation, so its ratings are reliable: <b>sure</b> or <b>impossible</b>.' : 'For each thought the LM is asked <b>3 times</b> whether the numbers left can still reach 24. sure = 20, likely = 1, impossible = 0.001, summed.'; }
+        else if (stage === 'select') { ph = 'step ' + t + ' · select'; txt = 'Keep the <b>' + st.kept.length + '</b> highest-scoring states. The other <b>' + (st.cands.length - st.kept.length) + '</b> are pruned and never expanded.'; }
+        else { ph = 'answer'; txt = r.success ? '<span class="ok">Solved.</span> The best final state is 24, so the LM writes out the equation: <b class="mono">' + esc(r.answer) + ' = 24</b>.' : '<span class="bad">Not solved.</span> No kept state reached 24; the best guess is <b class="mono">' + esc(r.answer) + ' = ' + esc(r.final) + '</b>. ' + (G.b < 3 ? 'With so few states kept there is no fallback: one weak proposal or rating along the way is fatal. Try b = 5.' : 'Even b = ' + G.b + ' can miss when the proposals and ratings are noisy. Try re-sampling the LM.'); }
+        $('#g24Narr').innerHTML = '<span class="ph">' + ph + '</span><span>' + txt + '</span>';
+      }
+      function renderAlgo() {
+        const { t, stage } = phaseInfo(G.phase);
+        const line = { ready: 0, propose: 2, evaluate: 3, select: 4, out: 5 }[stage];
+        $$('#algo li').forEach(li => li.classList.toggle('on', Number(li.dataset.l) === line || (line >= 2 && line <= 4 && li.dataset.l === '1')));
+        $('#algoState').textContent = 't = ' + (t || '–') + ' of 3 · b = ' + G.b + ' · k = ' + T24.K[4] + ', ' + T24.K[3] + ', ' + T24.K[2] + ' thoughts per proposal';
+      }
+      const PROPOSE_PROMPT = 'Use + − × ÷ on two of the numbers to suggest possible next steps.\nInput: 2 8 8 14\nPossible next steps:\n2 + 8 = 10 (left: 8 10 14)\n8 ÷ 2 = 4 (left: 4 8 14)\n14 − 8 = 6 (left: 2 6 8)\n…\n';
+      const VALUE_PROMPT = 'Evaluate if the given numbers can reach 24 (sure / likely / impossible)\n10 14: 10 + 14 = 24. sure\n4 4 10: (10 − 4) × 4 = 24. sure\n11 12: 11 + 12 = 23, 12 − 11 = 1, 11 × 12 = 132. impossible\n5 7 8: 5 + 7 + 8 = 20, (8 − 5) × 7 = 21. I cannot reach 24 yet, but the numbers are in a workable range. likely\n1 3 3: (1 + 3) × 3 = 12. These numbers are too small. impossible\n…\n';
+      function renderInsp() {
+        const pane = $('#paneInsp');
+        const c = G.sel && G.run.all[G.sel];
+        if (!c) { pane.innerHTML = '<p class="note">Click any thought in the tree to see the prompt the LM received and what it replied. During playback this panel follows the newest step until you click something.</p>'; return; }
+        const status = colStatus(c.depth);
+        const path = []; for (let p = c; p.parent; p = p.parent) path.unshift(p);
+        const par = c.parent;
+        let h = '<div class="insp-sec"><h4>Path to this state</h4><ol class="pathlist"><li>' + esc(G.run.root.label) + ' (input)</li>' + path.map(p => '<li class="' + (p === c ? 'cur' : '') + '">' + esc(p.text) + ' → ' + esc(p.label) + '</li>').join('') + '</ol></div>';
+        h += '<div class="insp-sec"><h4>Propose call</h4><pre class="prompt">' + esc(PROPOSE_PROMPT) + '<b>Input: ' + esc(par.label) + '\nPossible next steps:</b></pre><div class="reply">' +
+          par.children.map(x => '<div class="ln' + (x === c ? ' hi' : '') + '"><span>' + esc(x.text) + ' (left: ' + esc(x.label) + ')</span></div>').join('') + '</div></div>';
+        if (status === 'evaluated' || status === 'selected') {
+          const vs = c.samples.map(s => T24.VALUE[s.verdict]);
+          h += '<div class="insp-sec"><h4>Value calls · 3 samples</h4><pre class="prompt">' + esc(c.items.length === 1 ? 'Is this the answer 24? (sure / impossible)\n' : VALUE_PROMPT) + '<b>' + esc(c.label) + ':</b></pre><div class="reply">' +
+            c.samples.map(s => '<div class="ln"><span>' + esc(s.text) + '.</span><span class="pill wide ' + s.verdict + '">' + s.verdict + '</span></div>').join('') + '</div>' +
+            '<p class="mono" style="font-size:.78rem">value = ' + vs.map(v => v === 0.001 ? '0.001' : v).join(' + ') + ' = ' + fmtVal(c.value) + (status === 'selected' ? (c.kept ? ' · kept, rank ' + c.rank : ' · pruned') : '') + '</p></div>';
+          const lmSays = c.samples.filter(s => s.verdict !== 'impossible').length >= 2;
+          const wrong = lmSays !== c.truth;
+          let truthTxt = c.truth ? '24 is reachable from ' + c.label + (c.items.length > 1 ? ', e.g. ' + T24.solutions(c.items)[0].s + ' = 24' : '') + '.' : '24 cannot be reached from ' + c.label + '.';
+          h += '<div class="truth' + (wrong ? ' warn' : '') + '"><b>Exact check (not shown to the LM):</b> ' + esc(truthTxt) + (wrong ? ' The LM\'s ratings got this one wrong, which happens in the paper too.' : '') + '</div>';
+        } else {
+          h += '<p class="note">Not rated yet. Advance to the evaluate step.</p>';
+        }
+        pane.innerHTML = h;
+      }
+      function setSideTab(which) {
+        $('#tabAlgo').setAttribute('aria-selected', String(which === 'algo'));
+        $('#tabInsp').setAttribute('aria-selected', String(which === 'insp'));
+        $('#paneAlgo').hidden = which !== 'algo';
+        $('#paneInsp').hidden = which !== 'insp';
+      }
+      $('#tabAlgo').addEventListener('click', () => setSideTab('algo'));
+      $('#tabInsp').addEventListener('click', () => setSideTab('insp'));
+      function autoFollow() {
+        if (!G.follow) return;
+        const { t, stage } = phaseInfo(G.phase);
+        if (stage === 'ready') { G.sel = null; return; }
+        const st = G.run.steps[t - 1];
+        G.sel = stage === 'out' ? G.run.best.id : stage === 'select' ? st.kept[0].id : st.cands[0].id;
+      }
+      function renderG24() {
+        autoFollow();
+        renderTree(); renderNarr(); renderAlgo(); renderInsp();
+        $('#g24Next').disabled = G.phase >= PH_LAST;
+        $('#g24Play').textContent = G.timer ? 'Pause' : 'Play all';
+        $('#g24SeedN').textContent = 'run ' + (G.seed - SEED0);
+        $$('#g24B button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.b) === G.b)));
+        $$('#g24Presets .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.n === G.nums.join(' '))));
+      }
+      function renderLower() {
+        const fm = T24.firstMoves(G.nums), alive = fm.filter(m => m.alive).length;
+        const lab = esc(T24.label(G.nums.map(n => T24.leaf(T24.Q(n)))));
+        $('#fsCount').innerHTML = '<b>' + alive + ' of ' + fm.length + '</b><span>first equations from ' + lab + ' can still reach 24</span>';
+        $('#fmText').innerHTML = 'Green tiles keep 24 reachable; grey tiles are dead ends however well the rest goes. A chain-of-thought sample picks one tile and never reconsiders. ToT proposes several, rates them, and keeps the best.';
+        $('#fmTiles').innerHTML = fm.map(m => '<span class="' + (m.alive ? 'alive' : '') + '" data-tip="' + esc(m.text + ' → left: ' + m.left + (m.alive ? ' · 24 still reachable' : ' · dead end')) + '">' + esc(m.text) + '</span>').join('');
+        renderCot();
+      }
+      function renderCot() {
+        const c = T24.cot(G.nums, G.cotSeed);
+        $('#cotChain').innerHTML = c.chain.map((s, i) => '<li><span>' + (i + 1) + '. ' + esc(s.text) + ' (left: ' + esc(s.left) + ')</span>' + (i < 2 ? '<span class="st ' + (s.alive ? 'alive' : 'dead') + '">' + (s.alive ? '24 still reachable' : 'dead end') + '</span>' : '') + '</li>').join('');
+        $('#cotRes').innerHTML = c.success ? '<span class="pill wide sure">solved</span><span class="mono">' + esc(c.answer) + ' = 24</span>' : '<span class="pill wide impossible">failed</span><span class="mono">' + esc(c.answer) + ' = ' + esc(c.final) + '</span>' + (c.chain[0].alive ? '' : '<span class="note">doomed by the first step</span>');
+        return c;
+      }
+      function g24Stop() { clearInterval(G.timer); G.timer = null; }
+      function g24Next() { if (G.phase >= PH_LAST) return false; G.phase++; renderG24(); if (G.phase >= PH_LAST) g24Stop(); return true; }
+      function g24Reset() { g24Stop(); G.phase = 0; G.follow = true; G.sel = null; setSideTab('algo'); renderG24(); }
+      function g24SetNums(nums) {
+        G.nums = nums; G.cotSeed = 1; G.cotTally = [0, 0]; $('#cotTally').textContent = '';
+        g24Compute(); G.sel = null; G.follow = true; renderG24(); renderLower();
+      }
+      $('#g24Presets').innerHTML = G24_PRESETS.map(p => '<button class="chip" data-n="' + p.join(' ') + '">' + p.join(' ') + '</button>').join('');
+      $('#g24Presets').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) g24SetNums(b.dataset.n.split(' ').map(Number)); });
+      $('#g24Form').addEventListener('submit', e => {
+        e.preventDefault();
+        const v = $('#g24Input').value.trim().split(/[\s,]+/).map(Number);
+        if (v.length !== 4 || v.some(x => !Number.isInteger(x) || x < 1 || x > 99)) { $('#g24Narr').innerHTML = '<span class="ph">input</span><span>Enter four whole numbers from 1 to 99, separated by spaces, such as <span class="mono">1 4 8 8</span>.</span>'; return; }
+        g24SetNums(v);
+      });
+      $('#g24B').innerHTML = [1, 2, 3, 4, 5].map(b => '<button data-b="' + b + '" aria-pressed="false">' + b + '</button>').join('');
+      $('#g24B').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; G.b = Number(b.dataset.b); g24Compute(); if (G.sel && !G.run.all[G.sel]) G.sel = null; renderG24(); });
+      $('#g24Seed').addEventListener('click', () => { G.seed++; g24Compute(); G.sel = G.follow ? null : (G.run.all[G.sel] ? G.sel : null); renderG24(); });
+      $('#g24Next').addEventListener('click', () => g24Next());
+      $('#g24Reset').addEventListener('click', g24Reset);
+      $('#g24Play').addEventListener('click', () => {
+        if (G.timer) { g24Stop(); renderG24(); return; }
+        if (G.phase >= PH_LAST) G.phase = 0;
+        G.timer = setInterval(() => { if (!g24Next()) g24Stop(); }, reduceMotion ? 300 : 1100);
+        g24Next();
+      });
+      $('#g24ShowPruned').addEventListener('change', e => { G.showPruned = e.target.checked; renderTree(); });
+      $('#g24Tree').addEventListener('click', e => {
+        const b = e.target.closest('.row'); if (!b) return;
+        G.sel = b.dataset.id; G.follow = false; setSideTab('insp'); renderTree(); renderInsp();
+      });
+      $('#cotAgain').addEventListener('click', () => {
+        G.cotSeed++;
+        const c = renderCot();
+        G.cotTally[1]++; if (c.success) G.cotTally[0]++;
+        $('#cotTally').textContent = 'This session: ' + G.cotTally[0] + ' of ' + G.cotTally[1] + ' new chains reached 24.';
+      });
+      builds.game24 = { next: g24Next, reset: g24Reset };
+      g24Compute(); renderG24(); renderLower();
+
+      /* ================= Start ================= */
+      const startId = (location.hash || '').slice(1);
+      const startIdx = scenes.findIndex(s => s.id === startId);
+      cur = -1;
+      show(startIdx >= 0 ? startIdx : 0);
+    })();
+  </script>
 
 </body>
+
 </html>
